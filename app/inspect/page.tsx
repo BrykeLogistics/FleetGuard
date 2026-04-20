@@ -61,10 +61,28 @@ function InspectContent() {
       baselineDamages = data || []
     }
 
-    // Convert images to base64
-    const images = await Promise.all(previews.map(async (p, i) => ({
-      media_type: files[i]?.type || 'image/jpeg',
-      data: p.split(',')[1]
+    // Resize and compress images before sending (max 1000px, jpeg 70%)
+    const resizeImage = (dataUrl: string): Promise<string> => {
+      return new Promise(resolve => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const maxSize = 1000
+          let w = img.width, h = img.height
+          if (w > maxSize || h > maxSize) {
+            if (w > h) { h = Math.round(h * maxSize / w); w = maxSize }
+            else { w = Math.round(w * maxSize / h); h = maxSize }
+          }
+          canvas.width = w; canvas.height = h
+          canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+          resolve(canvas.toDataURL('image/jpeg', 0.7).split(',')[1])
+        }
+        img.src = dataUrl
+      })
+    }
+    const images = await Promise.all(previews.slice(0, 3).map(async (p) => ({
+      media_type: 'image/jpeg',
+      data: await resizeImage(p)
     })))
 
     try {
@@ -80,7 +98,9 @@ function InspectContent() {
           baselineDamages,
         })
       })
-      const data = await res.json()
+      const rawText = await res.text()
+      let data
+      try { data = JSON.parse(rawText) } catch { throw new Error("Server error: " + rawText.slice(0, 200)) }
       if (data.error) throw new Error(data.error)
       setResult(data)
       setStep(3)
