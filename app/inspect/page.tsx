@@ -393,34 +393,34 @@ function InspectContent() {
               <div>
                 <div style={{ fontSize:15, fontWeight:500, marginBottom:16 }}>How do you want to capture?</div>
 
-                {/* Option 1: Guided */}
+                {/* Option 1: Guided capture */}
                 <div style={{ border:'2px solid #185FA5', borderRadius:12, padding:'16px', marginBottom:10, background:'#E6F1FB', cursor:'pointer' }} onClick={() => setShowGuided(true)}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                       <div style={{ fontSize:28 }}>📐</div>
                       <div>
                         <div style={{ fontSize:14, fontWeight:600, color:'#0C447C' }}>Guided capture <span style={{ fontSize:11, background:'#185FA5', color:'white', padding:'2px 8px', borderRadius:10, marginLeft:4 }}>Recommended</span></div>
-                        <div style={{ fontSize:12, color:'#185FA5', marginTop:2 }}>Opens camera with truck stencil overlays · 8 guided shots</div>
+                        <div style={{ fontSize:12, color:'#185FA5', marginTop:2 }}>Camera with truck stencil overlays · 8 guided shots</div>
                       </div>
                     </div>
                     <div style={{ fontSize:18, color:'#185FA5' }}>→</div>
                   </div>
                 </div>
 
-                {/* Option 2: Video */}
-                <div style={{ border: uploadMode === 'video' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', borderRadius:12, padding:'16px', marginBottom:10, background: uploadMode === 'video' ? '#f0f7ff' : 'white', cursor:'pointer' }}
-                  onClick={() => { setUploadMode('video'); setShowGuided(false) }}>
+                {/* Option 2: Record now */}
+                <div style={{ border: uploadMode === 'video' && videoSubMode === 'record' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', borderRadius:12, padding:'16px', marginBottom:10, background: uploadMode === 'video' && videoSubMode === 'record' ? '#f0f7ff' : 'white', cursor:'pointer' }}
+                  onClick={() => { setUploadMode('video'); setVideoSubMode('record'); setShowGuided(false); startRecording() }}>
                   <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                    <div style={{ fontSize:28 }}>🎥</div>
+                    <div style={{ fontSize:28 }}>🔴</div>
                     <div>
-                      <div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Video walkaround</div>
-                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Upload a recorded video — app extracts frames automatically</div>
+                      <div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Record now</div>
+                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Record a walkaround video using your camera</div>
                     </div>
                   </div>
                 </div>
 
-                {/* Option 3: Photos */}
-                <div style={{ border: uploadMode === 'photo' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', borderRadius:12, padding:'16px', marginBottom:16, background: uploadMode === 'photo' ? '#f0f7ff' : 'white', cursor:'pointer' }}
+                {/* Option 3: Upload photos */}
+                <div style={{ border: uploadMode === 'photo' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', borderRadius:12, padding:'16px', marginBottom:10, background: uploadMode === 'photo' ? '#f0f7ff' : 'white', cursor:'pointer' }}
                   onClick={() => { setUploadMode('photo'); setShowGuided(false) }}>
                   <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ fontSize:28 }}>📷</div>
@@ -431,27 +431,21 @@ function InspectContent() {
                   </div>
                 </div>
 
+                {/* Option 4: Upload video */}
+                <div style={{ border: uploadMode === 'video' && videoSubMode === 'upload' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', borderRadius:12, padding:'16px', marginBottom:16, background: uploadMode === 'video' && videoSubMode === 'upload' ? '#f0f7ff' : 'white', cursor:'pointer' }}
+                  onClick={() => { setUploadMode('video'); setVideoSubMode('upload'); setShowGuided(false) }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    <div style={{ fontSize:28 }}>📁</div>
+                    <div>
+                      <div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Upload video</div>
+                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Choose a pre-recorded video from your device</div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* VIDEO upload UI */}
                 {uploadMode === 'video' && (
                   <div style={{ marginBottom:14 }}>
-
-                    {/* Sub-mode: choose record vs upload */}
-                    {videoSubMode === 'choose' && (
-                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                        <div onClick={() => { setVideoSubMode('record'); startRecording() }}
-                          style={{ border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:10, padding:'20px 12px', textAlign:'center', cursor:'pointer', background:'white' }}>
-                          <div style={{ fontSize:32, marginBottom:8 }}>🔴</div>
-                          <div style={{ fontSize:13, fontWeight:600 }}>Record now</div>
-                          <div style={{ fontSize:11, color:'#888', marginTop:3 }}>Use your camera to record a walkaround</div>
-                        </div>
-                        <div onClick={() => setVideoSubMode('upload')}
-                          style={{ border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:10, padding:'20px 12px', textAlign:'center', cursor:'pointer', background:'white' }}>
-                          <div style={{ fontSize:32, marginBottom:8 }}>📁</div>
-                          <div style={{ fontSize:13, fontWeight:600 }}>Upload video</div>
-                          <div style={{ fontSize:11, color:'#888', marginTop:3 }}>Choose a pre-recorded video from your device</div>
-                        </div>
-                      </div>
-                    )}
 
                     {/* Sub-mode: live recording */}
                     {videoSubMode === 'record' && (
@@ -483,7 +477,7 @@ function InspectContent() {
                               🔴 Start recording
                             </button>
                           )}
-                          <button className="btn" onClick={() => { stopRecording(); setVideoSubMode('choose'); setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}>Cancel</button>
+                          <button className="btn" onClick={() => { stopRecording(); setUploadMode('photo'); setVideoSubMode('choose'); setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}>Cancel</button>
                         </div>
                       </div>
                     )}
@@ -505,7 +499,7 @@ function InspectContent() {
                               <button className="btn btn-primary" onClick={extractFrames} disabled={extracting}>
                                 {extracting ? `Extracting... ${extractProgress}%` : extractedFrames.length > 0 ? `Re-extract frames (${extractedFrames.length})` : 'Extract frames for AI →'}
                               </button>
-                              <button className="btn" onClick={() => { setVideoFile(null); setVideoUrl(''); setExtractedFrames([]); setVideoSubMode('choose') }}>Change</button>
+                              <button className="btn" onClick={() => { setVideoFile(null); setVideoUrl(''); setExtractedFrames([]); setVideoSubMode('upload'); setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}>Change</button>
                             </div>
                             {extracting && (
                               <div style={{ marginBottom:12 }}>
@@ -530,7 +524,7 @@ function InspectContent() {
                             )}
                           </div>
                         )}
-                        {!videoFile && <button className="btn" style={{ marginTop:10 }} onClick={() => setVideoSubMode('choose')}>← Back</button>}
+                
                       </div>
                     )}
 
