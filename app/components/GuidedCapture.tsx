@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect } from 'react'
 
 const SHOTS = [
   { id: 'front',        label: 'Front',              icon: '⬆', desc: 'Stand 15–20 ft away, centered on the front' },
@@ -312,32 +312,27 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
     return () => { streamRef.current?.getTracks().forEach(t => t.stop()) }
   }, [])
 
+  // Attach stream to video element whenever mode is camera
   useEffect(() => {
-    if (mode === 'camera' && videoRef.current && streamRef.current) {
-      attachAndPlay(videoRef.current)
-    }
+    if (mode === 'camera') startVideoPreview()
   }, [mode])
 
-  const videoCallbackRef = useCallback((el: HTMLVideoElement | null) => {
-    if (el && streamRef.current) {
-      (videoRef as any).current = el
-      attachAndPlay(el)
-    }
-  }, [])
-
-  function attachAndPlay(el: HTMLVideoElement) {
-    if (!streamRef.current) return
-    el.srcObject = streamRef.current
-    el.setAttribute('playsinline', 'true')
-    el.setAttribute('muted', 'true')
+  function startVideoPreview() {
+    const el = videoRef.current
+    const stream = streamRef.current
+    if (!el || !stream) return
+    el.srcObject = stream
     el.muted = true
+    el.setAttribute('playsinline', 'true')
     setVideoPlaying(false)
-    const p = el.play()
-    if (p !== undefined) p.then(() => setVideoPlaying(true)).catch(() => setVideoPlaying(false))
+    el.play().then(() => setVideoPlaying(true)).catch(() => setVideoPlaying(false))
   }
 
   function tapToStart() {
-    if (videoRef.current) videoRef.current.play().then(() => setVideoPlaying(true)).catch(() => {})
+    const el = videoRef.current
+    if (!el) return
+    if (streamRef.current && !el.srcObject) el.srcObject = streamRef.current
+    el.play().then(() => setVideoPlaying(true)).catch(() => {})
   }
 
   async function requestCamera() {
@@ -349,6 +344,8 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
       })
       streamRef.current = s
       setMode('camera')
+      // Small delay to ensure video element is rendered before attaching
+      setTimeout(() => startVideoPreview(), 100)
     } catch {
       setCameraError('Camera access denied. Please allow camera access in your browser settings and try again.')
     }
@@ -408,7 +405,7 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
 
       {mode === 'camera' && !cameraError && (
         <div style={{ position:'relative', width:'100%', aspectRatio:'4/3' }}>
-          <video ref={videoCallbackRef} autoPlay playsInline muted style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} onPlaying={() => setVideoPlaying(true)} />
+          <video ref={videoRef} autoPlay playsInline muted style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} onPlaying={() => setVideoPlaying(true)} />
 
           <svg width="100%" height="100%" viewBox={stencil.viewBox} preserveAspectRatio="xMidYMid meet"
             style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
