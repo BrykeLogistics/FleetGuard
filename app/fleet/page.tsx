@@ -127,15 +127,7 @@ export default function FleetPage() {
       }
 
       if (make && make !== 'Not Applicable') {
-        setForm(prev => ({
-          ...prev,
-          make: finalMake !== 'Not Applicable' ? finalMake : prev.make,
-          model: model !== 'Not Applicable' ? model : prev.model,
-          year: year !== 'Not Applicable' ? year : prev.year,
-          vehicle_type: vehicle_type || prev.vehicle_type,
-        }))
-        // Ford P-series: decode model directly from VIN positions 5-7
-        // These are the actual chassis series codes from Ford's official VIN guide
+        // Ford P-series: decode model and make from VIN positions 5-7
         const vds57 = vinUpper.slice(4, 7)
         const fordPSeries: Record<string, string> = {
           'F3K': 'P600', 'F4K': 'P700', 'F4A': 'P700',
@@ -144,19 +136,20 @@ export default function FleetPage() {
           'F7K': 'P1200', 'F7A': 'P1200',
           'F8K': 'P1400', 'F8A': 'P1400',
         }
-        let finalModel = model
-        let finalMake = make
-        if ((wmi === '1F6' || wmi === '5F6') && fordPSeries[vds57]) {
-          finalModel = fordPSeries[vds57]
-          // 1F6 = Detroit Chassis LLC / Ford P-series
-          // The finished vehicle is built by a body manufacturer (Utilimaster, Grumman, etc.)
-          // NHTSA only knows the chassis maker, not the body builder
-          // We default to Utilimaster as the most common P-series body builder for FedEx/Amazon fleets
-          finalMake = 'Utilimaster'
-        }
+        const isPSeries = (wmi === '1F6' || wmi === '5F6') && !!fordPSeries[vds57]
+        const finalModel = isPSeries ? fordPSeries[vds57] : (model !== 'Not Applicable' ? model : '')
+        const finalMake = isPSeries ? 'Utilimaster' : (make !== 'Not Applicable' ? make : '')
+
+        setForm(prev => ({
+          ...prev,
+          make: finalMake || prev.make,
+          model: finalModel || prev.model,
+          year: year !== 'Not Applicable' ? year : prev.year,
+          vehicle_type: vehicle_type || prev.vehicle_type,
+        }))
 
         const typeLabel = vehicle_type === 'sprinter' ? 'Sprinter/Cargo Van' : vehicle_type === 'stepvan' ? 'Step Van' : vehicle_type === 'boxtruck' ? 'Box Truck' : 'Unknown — please select manually'
-        const makeNote = (wmi === '1F6' || wmi === '5F6') && fordPSeries[vds57] ? ' (update make if different body builder)' : ''
+        const makeNote = isPSeries ? ' (update make if Grumman, Morgan Olson, etc.)' : ''
         setVinMessage(`✓ Found: ${year} ${finalMake} ${finalModel} · ${typeLabel}${makeNote} — review and confirm below`)
       } else {
         setVinMessage('VIN not found — please fill in details manually')
