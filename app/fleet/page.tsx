@@ -69,22 +69,44 @@ export default function FleetPage() {
       const bodyClass = get('Body Class') || ''
       const gvwr = get('Gross Vehicle Weight Rating From') || ''
 
-      // Detect vehicle type from NHTSA body class
+      // Detect vehicle type from NHTSA data
       let vehicle_type = ''
       const body = bodyClass.toLowerCase()
+      const makeL = make.toLowerCase()
+      const modelL = model.toLowerCase()
+      const mfr = get('Manufacturer Name').toLowerCase()
       const gvwrNum = parseInt(gvwr.replace(/[^0-9]/g, '')) || 0
-      if (body.includes('van') && (body.includes('cargo') || body.includes('delivery') || model.toLowerCase().includes('sprinter') || model.toLowerCase().includes('transit') || model.toLowerCase().includes('promaster'))) {
-        vehicle_type = 'sprinter'
-      } else if (body.includes('step van') || body.includes('walk-in') || body.includes('walk in')) {
+
+      // Step van detection — check manufacturer, model series, and body class
+      // Known step van / walk-in van manufacturers and models
+      const stepVanMakers = ['utilimaster', 'grumman', 'olson', 'morgan', 'hackney', 'supreme', 'spartan']
+      const stepVanModels = ['p700', 'p800', 'p900', 'p1000', 'p1100', 'p1200', 'p-700', 'p-800', 'p-900', 'p-1000', 'p-1100', 'p-1200', 'step van', 'stepvan', 'walk-in', 'walk in', 'workhorse', 'mt45', 'mt55', 'w42', 'w62']
+      const isStepVanMaker = stepVanMakers.some(m => mfr.includes(m) || makeL.includes(m))
+      const isStepVanModel = stepVanModels.some(m => modelL.includes(m))
+      const isStepVanBody = body.includes('step van') || body.includes('walk-in') || body.includes('walk in') || body.includes('delivery van')
+
+      // Sprinter / cargo van models (Mercedes, Ford Transit, Ram ProMaster, etc.)
+      const sprinterModels = ['sprinter', 'transit', 'promaster', 'nv cargo', 'express', 'savana', 'econoline', 'e-series', 'e350', 'e450']
+      const isSprinterModel = sprinterModels.some(m => modelL.includes(m))
+      const isSprinterBody = body.includes('cargo van') || body.includes('passenger van')
+
+      // Box truck — separate cab, longer chassis
+      const boxTruckModels = ['m2', 'npr', 'npr-hd', 'nqr', 'ftr', 'fvr', 'f650', 'f750', 'c7500', 'c6500', 'tiltmaster']
+      const isBoxTruckModel = boxTruckModels.some(m => modelL.includes(m))
+      const isBoxTruckBody = body.includes('straight') || body.includes('box truck') || body.includes('cab-over')
+
+      if (isStepVanMaker || isStepVanModel || isStepVanBody) {
         vehicle_type = 'stepvan'
-      } else if (body.includes('truck') && (body.includes('box') || body.includes('straight') || gvwrNum >= 10000)) {
-        vehicle_type = 'boxtruck'
-      } else if (body.includes('van')) {
+      } else if (isSprinterModel || (isSprinterBody && gvwrNum < 14000)) {
         vehicle_type = 'sprinter'
+      } else if (isBoxTruckModel || isBoxTruckBody || gvwrNum >= 26000) {
+        vehicle_type = 'boxtruck'
+      } else if (body.includes('van') && gvwrNum < 14000) {
+        vehicle_type = 'sprinter'
+      } else if (gvwrNum >= 14000 && gvwrNum < 26000) {
+        vehicle_type = 'stepvan'
       } else if (gvwrNum >= 26000) {
         vehicle_type = 'boxtruck'
-      } else if (gvwrNum >= 10000) {
-        vehicle_type = 'stepvan'
       }
 
       if (make && make !== 'Not Applicable') {
