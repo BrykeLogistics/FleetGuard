@@ -14,13 +14,25 @@ export default function Navbar() {
   ]
 
   return (
-    <nav style={{ background:'white', borderBottom:'0.5px solid rgba(0,0,0,0.1)', padding:'0 20px', display:'flex', alignItems:'center', height:56, gap:8, position:'sticky', top:0, zIndex:100 }}>
+    <nav style={{ background:'white', borderBottom:'0.5px solid rgba(0,0,0,0.1)', padding:'0 20px', display:'flex', alignItems:'center', height:60, gap:8, position:'sticky', top:0, zIndex:100 }}>
       {/* Logo */}
-      <Link href="/" style={{ display:'flex', alignItems:'center', gap:8, textDecoration:'none', marginRight:16 }}>
-        <div style={{ width:30, height:34, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <svg width="18" height="20" viewBox="0 0 32 36" fill="none"><path d="M16 1 L30 6.5 L30 19 Q30 28 16 33 Q2 28 2 19 L2 6.5 Z" fill="white"/><path d="M16 4 L27 8.5 L27 19 Q27 26 16 30 Q5 26 5 19 L5 8.5 Z" fill="#185FA5"/><rect x="7" y="12" width="12" height="8" rx="1.5" fill="white" opacity="0.95"/><rect x="20" y="14" width="6" height="6" rx="1" fill="white" opacity="0.7"/><rect x="7" y="18" width="19" height="2" rx="1" fill="white" opacity="0.25"/><circle cx="11" cy="22" r="2.5" fill="white"/><circle cx="23" cy="22" r="2.5" fill="white"/></svg>
+      <Link href="/" style={{ display:'flex', alignItems:'center', gap:10, textDecoration:'none', marginRight:16 }}>
+        <svg width="36" height="42" viewBox="0 0 100 115" fill="none">
+          <path d="M50 4 L90 18 L90 54 Q90 80 50 96 Q10 80 10 54 L10 18 Z" fill="#185FA5"/>
+          <path d="M50 10 L84 23 L84 54 Q84 76 50 90 Q16 76 16 54 L16 23 Z" fill="#0C447C"/>
+          <rect x="22" y="38" width="32" height="20" rx="3.5" fill="white"/>
+          <rect x="56" y="43" width="22" height="15" rx="2.5" fill="white" opacity="0.75"/>
+          <rect x="58" y="45" width="18" height="11" rx="1.5" fill="#185FA5" opacity="0.45"/>
+          <rect x="22" y="55" width="56" height="3.5" rx="1.5" fill="white" opacity="0.25"/>
+          <circle cx="32" cy="63" r="6" fill="white"/>
+          <circle cx="32" cy="63" r="3" fill="#0C447C"/>
+          <circle cx="64" cy="63" r="6" fill="white"/>
+          <circle cx="64" cy="63" r="3" fill="#0C447C"/>
+        </svg>
+        <div>
+          <div style={{ fontWeight:700, fontSize:16, color:'#1a1a1a', lineHeight:1.1 }}>FleetGuard</div>
+          <div style={{ fontSize:10, color:'#888', letterSpacing:'0.08em', textTransform:'uppercase' }}>AI Inspection</div>
         </div>
-        <span style={{ fontWeight:600, fontSize:15, color:'#1a1a1a' }}>FleetGuard</span>
       </Link>
 
       {/* Nav links */}
