@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
+import GuidedCapture from '../components/GuidedCapture'
 import Link from 'next/link'
 
 function InspectContent() {
@@ -34,6 +35,7 @@ function InspectContent() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [showGuided, setShowGuided] = useState(false)
 
   useEffect(() => { loadTrucks() }, [])
 
@@ -120,6 +122,14 @@ function InspectContent() {
 
   function removeFrame(idx: number) {
     setExtractedFrames(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  // ── Guided capture handler ─────────────────────────────────────
+  function handleGuidedComplete(frames: { shotId: string, label: string, dataUrl: string }[]) {
+    setShowGuided(false)
+    const newPreviews = frames.map(f => f.dataUrl)
+    setPreviews(prev => [...prev, ...newPreviews])
+    setUploadMode('photo')
   }
 
   // ── Resize helper ───────────────────────────────────────────────
@@ -310,6 +320,26 @@ function InspectContent() {
         {step === 2 && (
           <div className="card" style={{ padding:'24px' }}>
             <div style={{ fontSize:15, fontWeight:500, marginBottom:6 }}>Upload media</div>
+
+            {/* Guided capture banner */}
+            <div style={{ background:'#E6F1FB', borderRadius:10, padding:'14px 16px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:600, color:'#0C447C', marginBottom:2 }}>📐 Guided capture — recommended</div>
+                <div style={{ fontSize:12, color:'#185FA5' }}>Step-by-step camera with truck stencil overlays for all 8 angles</div>
+              </div>
+              <button onClick={() => setShowGuided(true)} style={{ padding:'9px 18px', background:'#185FA5', color:'white', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', flexShrink:0 }}>Start guided →</button>
+            </div>
+
+            {/* Guided capture overlay */}
+            {showGuided && (
+              <div style={{ marginBottom:16 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                  <div style={{ fontSize:14, fontWeight:500 }}>Guided capture</div>
+                  <button onClick={() => setShowGuided(false)} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:13 }}>✕ Cancel</button>
+                </div>
+                <GuidedCapture onComplete={handleGuidedComplete} onCancel={() => setShowGuided(false)} />
+              </div>
+            )}
 
             {/* Mode toggle */}
             <div style={{ display:'flex', gap:8, marginBottom:20, marginTop:12 }}>
