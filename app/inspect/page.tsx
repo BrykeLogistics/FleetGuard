@@ -29,6 +29,17 @@ function InspectContent() {
   const [extractProgress, setExtractProgress] = useState(0)
   const videoRef = useRef<HTMLVideoElement>(null)
 
+  // Live recording state
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingStream, setRecordingStream] = useState<MediaStream|null>(null)
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder|null>(null)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
+  const [liveVideoUrl, setLiveVideoUrl] = useState<string>('')
+  const [videoSubMode, setVideoSubMode] = useState<'choose'|'record'|'upload'>('choose')
+  const recordingRef = useRef<HTMLVideoElement>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<NodeJS.Timeout|null>(null)
+
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeStatus, setAnalyzeStatus] = useState('')
   const [result, setResult] = useState<any>(null)
@@ -122,6 +133,55 @@ function InspectContent() {
 
   function removeFrame(idx: number) {
     setExtractedFrames(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  // ── Live video recording ───────────────────────────────────────
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false
+      })
+      setRecordingStream(stream)
+      if (recordingRef.current) {
+        recordingRef.current.srcObject = stream
+        recordingRef.current.play().catch(() => {})
+      }
+      chunksRef.current = []
+      const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' :
+                       MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm'
+      const recorder = new MediaRecorder(stream, { mimeType })
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType })
+        const url = URL.createObjectURL(blob)
+        const file = new File([blob], 'recording.mp4', { type: mimeType })
+        setLiveVideoUrl(url)
+        setVideoFile(file)
+        setVideoUrl(url)
+        setVideoSubMode('upload')
+        stream.getTracks().forEach(t => t.stop())
+        setRecordingStream(null)
+      }
+      recorder.start(100)
+      setMediaRecorder(recorder)
+      setIsRecording(true)
+      setRecordingSeconds(0)
+      timerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
+    } catch {
+      alert('Camera access denied. Please allow camera access and try again.')
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorder?.stop()
+    setIsRecording(false)
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = null
+  }
+
+  function formatTime(s: number) {
+    return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`
   }
 
   // ── Guided capture handler ─────────────────────────────────────
@@ -374,45 +434,106 @@ function InspectContent() {
                 {/* VIDEO upload UI */}
                 {uploadMode === 'video' && (
                   <div style={{ marginBottom:14 }}>
-                    {!videoFile ? (
-                      <label htmlFor="video-input" style={{ display:'block', border:'1.5px dashed rgba(0,0,0,0.2)', borderRadius:12, padding:'28px', textAlign:'center', cursor:'pointer', background:'#f9f9f8' }}>
-                        <div style={{ fontSize:32, marginBottom:8 }}>🎥</div>
-                        <div style={{ fontSize:14, fontWeight:500, marginBottom:4 }}>Tap to upload walkaround video</div>
-                        <div style={{ fontSize:12, color:'#aaa' }}>MP4, MOV, HEVC supported</div>
-                        <input id="video-input" type="file" accept="video/*" onChange={handleVideoFile} style={{ display:'none' }} />
-                      </label>
-                    ) : (
-                      <div>
-                        <video ref={videoRef} src={videoUrl} controls style={{ width:'100%', borderRadius:10, marginBottom:12, background:'#000', maxHeight:260 }} />
-                        <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
-                          <button className="btn btn-primary" onClick={extractFrames} disabled={extracting}>
-                            {extracting ? `Extracting... ${extractProgress}%` : extractedFrames.length > 0 ? `Re-extract frames (${extractedFrames.length})` : 'Extract frames for AI →'}
-                          </button>
-                          <button className="btn" onClick={() => { setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}>Change video</button>
+
+                    {/* Sub-mode: choose record vs upload */}
+                    {videoSubMode === 'choose' && (
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                        <div onClick={() => { setVideoSubMode('record'); startRecording() }}
+                          style={{ border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:10, padding:'20px 12px', textAlign:'center', cursor:'pointer', background:'white' }}>
+                          <div style={{ fontSize:32, marginBottom:8 }}>🔴</div>
+                          <div style={{ fontSize:13, fontWeight:600 }}>Record now</div>
+                          <div style={{ fontSize:11, color:'#888', marginTop:3 }}>Use your camera to record a walkaround</div>
                         </div>
-                        {extracting && (
-                          <div style={{ marginBottom:12 }}>
-                            <div style={{ height:4, background:'#eee', borderRadius:2, overflow:'hidden' }}>
-                              <div style={{ height:'100%', background:'#185FA5', width:`${extractProgress}%`, transition:'width 0.3s' }} />
-                            </div>
-                          </div>
-                        )}
-                        {extractedFrames.length > 0 && (
-                          <div>
-                            <div style={{ fontSize:12, color:'#555', marginBottom:8 }}>{extractedFrames.length} frames extracted — tap × to remove any</div>
-                            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px,1fr))', gap:8 }}>
-                              {extractedFrames.map((src, i) => (
-                                <div key={i} style={{ position:'relative' }}>
-                                  <img src={src} style={{ width:'100%', aspectRatio:'16/9', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)' }} />
-                                  <div style={{ position:'absolute', bottom:3, left:3, background:'rgba(0,0,0,0.55)', color:'white', fontSize:9, padding:'1px 4px', borderRadius:3 }}>Frame {i+1}</div>
-                                  <button onClick={() => removeFrame(i)} style={{ position:'absolute', top:3, right:3, width:18, height:18, borderRadius:'50%', background:'rgba(0,0,0,0.6)', color:'white', border:'none', cursor:'pointer', fontSize:10, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        <div onClick={() => setVideoSubMode('upload')}
+                          style={{ border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:10, padding:'20px 12px', textAlign:'center', cursor:'pointer', background:'white' }}>
+                          <div style={{ fontSize:32, marginBottom:8 }}>📁</div>
+                          <div style={{ fontSize:13, fontWeight:600 }}>Upload video</div>
+                          <div style={{ fontSize:11, color:'#888', marginTop:3 }}>Choose a pre-recorded video from your device</div>
+                        </div>
                       </div>
                     )}
+
+                    {/* Sub-mode: live recording */}
+                    {videoSubMode === 'record' && (
+                      <div>
+                        <div style={{ position:'relative', background:'#000', borderRadius:12, overflow:'hidden', aspectRatio:'16/9', marginBottom:12 }}>
+                          <video ref={recordingRef} autoPlay playsInline muted style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                          {isRecording && (
+                            <div style={{ position:'absolute', top:12, left:12, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.6)', padding:'5px 12px', borderRadius:20 }}>
+                              <div style={{ width:8, height:8, borderRadius:'50%', background:'#E24B4A', animation:'pulse 1s infinite' }} />
+                              <span style={{ color:'white', fontSize:13, fontWeight:600 }}>{formatTime(recordingSeconds)}</span>
+                            </div>
+                          )}
+                          {isRecording && (
+                            <div style={{ position:'absolute', bottom:12, left:0, right:0, textAlign:'center' }}>
+                              <div style={{ display:'inline-block', background:'rgba(0,0,0,0.5)', color:'rgba(255,255,255,0.75)', fontSize:12, padding:'4px 12px', borderRadius:16 }}>
+                                Walk around the truck covering all sides
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
+                        <div style={{ display:'flex', gap:8 }}>
+                          {isRecording ? (
+                            <button onClick={stopRecording} style={{ flex:1, padding:'12px', background:'#E24B4A', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>
+                              ⏹ Stop recording
+                            </button>
+                          ) : (
+                            <button onClick={startRecording} style={{ flex:1, padding:'12px', background:'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>
+                              🔴 Start recording
+                            </button>
+                          )}
+                          <button className="btn" onClick={() => { stopRecording(); setVideoSubMode('choose'); setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sub-mode: upload or review recorded video */}
+                    {videoSubMode === 'upload' && (
+                      <div>
+                        {!videoFile ? (
+                          <label htmlFor="video-input" style={{ display:'block', border:'1.5px dashed rgba(0,0,0,0.2)', borderRadius:12, padding:'28px', textAlign:'center', cursor:'pointer', background:'#f9f9f8' }}>
+                            <div style={{ fontSize:32, marginBottom:8 }}>🎥</div>
+                            <div style={{ fontSize:14, fontWeight:500, marginBottom:4 }}>Tap to upload walkaround video</div>
+                            <div style={{ fontSize:12, color:'#aaa' }}>MP4, MOV, HEVC supported</div>
+                            <input id="video-input" type="file" accept="video/*" onChange={handleVideoFile} style={{ display:'none' }} />
+                          </label>
+                        ) : (
+                          <div>
+                            <video ref={videoRef} src={videoUrl} controls style={{ width:'100%', borderRadius:10, marginBottom:12, background:'#000', maxHeight:260 }} />
+                            <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+                              <button className="btn btn-primary" onClick={extractFrames} disabled={extracting}>
+                                {extracting ? `Extracting... ${extractProgress}%` : extractedFrames.length > 0 ? `Re-extract frames (${extractedFrames.length})` : 'Extract frames for AI →'}
+                              </button>
+                              <button className="btn" onClick={() => { setVideoFile(null); setVideoUrl(''); setExtractedFrames([]); setVideoSubMode('choose') }}>Change</button>
+                            </div>
+                            {extracting && (
+                              <div style={{ marginBottom:12 }}>
+                                <div style={{ height:4, background:'#eee', borderRadius:2, overflow:'hidden' }}>
+                                  <div style={{ height:'100%', background:'#185FA5', width:`${extractProgress}%`, transition:'width 0.3s' }} />
+                                </div>
+                              </div>
+                            )}
+                            {extractedFrames.length > 0 && (
+                              <div>
+                                <div style={{ fontSize:12, color:'#555', marginBottom:8 }}>{extractedFrames.length} frames extracted — tap × to remove any</div>
+                                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px,1fr))', gap:8 }}>
+                                  {extractedFrames.map((src, i) => (
+                                    <div key={i} style={{ position:'relative' }}>
+                                      <img src={src} style={{ width:'100%', aspectRatio:'16/9', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)' }} />
+                                      <div style={{ position:'absolute', bottom:3, left:3, background:'rgba(0,0,0,0.55)', color:'white', fontSize:9, padding:'1px 4px', borderRadius:3 }}>Frame {i+1}</div>
+                                      <button onClick={() => removeFrame(i)} style={{ position:'absolute', top:3, right:3, width:18, height:18, borderRadius:'50%', background:'rgba(0,0,0,0.6)', color:'white', border:'none', cursor:'pointer', fontSize:10, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {!videoFile && <button className="btn" style={{ marginTop:10 }} onClick={() => setVideoSubMode('choose')}>← Back</button>}
+                      </div>
+                    )}
+
                   </div>
                 )}
 
