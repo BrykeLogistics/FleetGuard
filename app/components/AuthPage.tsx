@@ -32,8 +32,8 @@ export default function AuthPage() {
       <div style={{ width:'100%', maxWidth:'380px' }}>
         {/* Logo */}
         <div style={{ textAlign:'center', marginBottom:'32px' }}>
-          <div style={{ width:48, height:48, background:'#185FA5', borderRadius:12, display:'inline-flex', alignItems:'center', justifyContent:'center', marginBottom:12 }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M1 16v-4l3-7h16l3 7v4H1zm3.5-2h15v-1.5l-2.5-5.5H7L4.5 13.5V14zM6 17.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0zm9 0a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0z"/></svg>
+          <div style={{ width:48, height:56, display:'inline-flex', alignItems:'center', justifyContent:'center', marginBottom:12 }}>
+            <svg width="26" height="30" viewBox="0 0 32 36" fill="none"><path d="M16 1 L30 6.5 L30 19 Q30 28 16 33 Q2 28 2 19 L2 6.5 Z" fill="white" opacity="0.9"/><path d="M16 4 L27 8.5 L27 19 Q27 26 16 30 Q5 26 5 19 L5 8.5 Z" fill="#185FA5"/><rect x="7" y="12" width="12" height="8" rx="1.5" fill="white" opacity="0.95"/><rect x="20" y="14" width="6" height="6" rx="1" fill="white" opacity="0.7"/><rect x="7" y="18" width="19" height="2" rx="1" fill="white" opacity="0.25"/><circle cx="11" cy="22" r="2.5" fill="white"/><circle cx="23" cy="22" r="2.5" fill="white"/></svg>
           </div>
           <div style={{ fontSize:22, fontWeight:600, color:'#1a1a1a' }}>FleetGuard</div>
           <div style={{ fontSize:13, color:'#888', marginTop:4 }}>AI-powered fleet damage inspector</div>
