@@ -18,6 +18,7 @@ export type Database = {
           model: string
           year: number
           license_plate: string
+          vin: string
           status: 'active' | 'inactive' | 'maintenance'
           user_id: string
         }
