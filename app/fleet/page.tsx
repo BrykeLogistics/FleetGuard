@@ -134,9 +134,36 @@ export default function FleetPage() {
           year: year !== 'Not Applicable' ? year : prev.year,
           vehicle_type: vehicle_type || prev.vehicle_type,
         }))
+        // For Ford P-series step vans (1F6 WMI), infer P-series model from GVWR class
+        // Position 4 of VIN encodes GVWR class for Ford incomplete vehicles
+        let inferredModel = model
+        if (wmi === '1F6' || wmi === '5F6') {
+          const pos4 = vinUpper[3]
+          // Ford GVWR class codes for Class 3-5 incomplete vehicles
+          const pSeriesMap: Record<string, string> = {
+            'K': 'P700 (10,001–14,000 lbs)',
+            'L': 'P1000 (14,001–16,000 lbs)',
+            'M': 'P1100 (16,001–19,500 lbs)',
+            'N': 'P1200 (19,501–26,000 lbs)',
+            'J': 'P600 (9,001–10,000 lbs)',
+          }
+          if (pSeriesMap[pos4]) {
+            inferredModel = pSeriesMap[pos4]
+          }
+          // Also check positions 5-7 for specific series codes
+          const vds57 = vinUpper.slice(4, 7)
+          if (vds57 === 'F5K') inferredModel = 'P1000 Commercial Chassis'
+          else if (vds57 === 'F6K') inferredModel = 'P1100 Commercial Chassis'
+          else if (vds57 === 'F7K') inferredModel = 'P1200 Commercial Chassis'
+          else if (vds57 === 'F4K') inferredModel = 'P700 Commercial Chassis'
+          else if (vds57 === 'F3K') inferredModel = 'P600 Commercial Chassis'
+        }
+        if (inferredModel !== model) {
+          setForm(prev => ({ ...prev, model: inferredModel }))
+        }
+
         const typeLabel = vehicle_type === 'sprinter' ? 'Sprinter/Cargo Van' : vehicle_type === 'stepvan' ? 'Step Van' : vehicle_type === 'boxtruck' ? 'Box Truck' : 'Unknown — please select manually'
-        const debugInfo = ` [Body: "${bodyClass}" | Mfr: "${get('Manufacturer Name')}" | GVWR: "${gvwr}"]`
-        setVinMessage(`✓ Found: ${year} ${make} ${model} · ${typeLabel}${debugInfo}`)
+        setVinMessage(`✓ Found: ${year} ${make} ${inferredModel} · ${typeLabel} — review and confirm below`)
       } else {
         setVinMessage('VIN not found — please fill in details manually')
       }
