@@ -1,320 +1,333 @@
 'use client'
-import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
 
-function InspectContent() {
-  const searchParams = useSearchParams()
-  const preselectedTruck = searchParams.get('truck')
+const emptyForm = { truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'' }
 
-  const [step, setStep] = useState(1)
+export default function FleetPage() {
   const [trucks, setTrucks] = useState<any[]>([])
-  const [selectedTruck, setSelectedTruck] = useState(preselectedTruck || '')
-  const [inspType, setInspType] = useState('Routine weekly check')
-  const [inspector, setInspector] = useState('')
-  const [notes, setNotes] = useState('')
-  const [isBaseline, setIsBaseline] = useState(false)
-  const [files, setFiles] = useState<File[]>([])
-  const [previews, setPreviews] = useState<string[]>([])
-  const [analyzing, setAnalyzing] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [viewMode, setViewMode] = useState<'grid'|'list'>('grid')
+  const [showAdd, setShowAdd] = useState(false)
+  const [editingId, setEditingId] = useState<string|null>(null)
+  const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [error, setError] = useState('')
+  const [selectedTruck, setSelectedTruck] = useState<any>(null)
+  const [truckDetail, setTruckDetail] = useState<{inspections:any[], damages:any[], photos:any[]}>({ inspections:[], damages:[], photos:[] })
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [photoUrls, setPhotoUrls] = useState<{[key:string]:string}>({})
 
   useEffect(() => { loadTrucks() }, [])
 
   async function loadTrucks() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data } = await supabase.from('trucks').select('*').eq('user_id', user.id).order('truck_number')
+    const { data } = await supabase.from('trucks').select('*, inspections(id, created_at, overall_condition, follow_up_required, is_baseline)').eq('user_id', user.id).order('truck_number')
     setTrucks(data || [])
+    setLoading(false)
   }
 
-  function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const newFiles = Array.from(e.target.files || [])
-    setFiles(prev => [...prev, ...newFiles])
-    newFiles.forEach(f => {
-      const reader = new FileReader()
-      reader.onload = ev => setPreviews(prev => [...prev, ev.target?.result as string])
-      reader.readAsDataURL(f)
-    })
-  }
-
-  function removeFile(idx: number) {
-    setFiles(prev => prev.filter((_, i) => i !== idx))
-    setPreviews(prev => prev.filter((_, i) => i !== idx))
-  }
-
-  async function runAnalysis() {
-    if (!selectedTruck) { setError('Please select a truck first.'); return }
-    setAnalyzing(true); setError('')
-
-    const truck = trucks.find(t => t.id === selectedTruck)
-
-    // Load baseline damages if this isn't a baseline inspection
-    let baselineDamages: any[] = []
-    if (!isBaseline) {
-      const { data } = await supabase.from('damages').select('*').eq('truck_id', selectedTruck).eq('is_new', false)
-      baselineDamages = data || []
-    }
-
-    // Resize and compress images before sending (max 1000px, jpeg 70%)
-    const resizeImage = (dataUrl: string): Promise<string> => {
-      return new Promise(resolve => {
-        const img = new Image()
-        img.onload = () => {
-          const canvas = document.createElement('canvas')
-          const maxSize = 1000
-          let w = img.width, h = img.height
-          if (w > maxSize || h > maxSize) {
-            if (w > h) { h = Math.round(h * maxSize / w); w = maxSize }
-            else { w = Math.round(w * maxSize / h); h = maxSize }
-          }
-          canvas.width = w; canvas.height = h
-          canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
-          resolve(canvas.toDataURL('image/jpeg', 0.7).split(',')[1])
-        }
-        img.src = dataUrl
-      })
-    }
-    const images = await Promise.all(previews.slice(0, 3).map(async (p) => ({
-      media_type: 'image/jpeg',
-      data: await resizeImage(p)
-    })))
-
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          images,
-          truckInfo: `Truck #${truck?.truck_number} - ${truck?.driver_name} (${truck?.year} ${truck?.make} ${truck?.model})`,
-          inspectionType: inspType,
-          inspector,
-          notes,
-          baselineDamages,
-        })
-      })
-      const rawText = await res.text()
-      let data
-      try { data = JSON.parse(rawText) } catch { throw new Error("Server error: " + rawText.slice(0, 200)) }
-      if (data.error) throw new Error(data.error)
-      setResult(data)
-      setStep(3)
-    } catch (err: any) {
-      setError(err.message)
-    }
-    setAnalyzing(false)
-  }
-
-  async function saveInspection() {
-    if (!result || !selectedTruck) return
-    setSaving(true)
+  async function openTruck(truck: any) {
+    setSelectedTruck(truck)
+    setLoadingDetail(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    const [inspRes, dmgRes, photoRes] = await Promise.all([
+      supabase.from('inspections').select('*').eq('truck_id', truck.id).order('created_at', { ascending: false }),
+      supabase.from('damages').select('*, inspections(created_at, inspection_type)').eq('truck_id', truck.id).order('created_at', { ascending: false }),
+      supabase.from('inspection_photos').select('*').eq('truck_id', truck.id).order('created_at', { ascending: false }).limit(20),
+    ])
+    setTruckDetail({ inspections: inspRes.data || [], damages: dmgRes.data || [], photos: photoRes.data || [] })
 
-    // Save inspection
-    const { data: insp } = await supabase.from('inspections').insert({
-      truck_id: selectedTruck,
-      inspector_name: inspector || 'Unknown',
-      inspection_type: inspType,
-      notes,
-      overall_condition: result.overallCondition,
-      summary: result.summary,
-      follow_up_required: result.followUpRequired,
-      repair_urgency: result.estimatedRepairUrgency,
-      is_baseline: isBaseline,
-      user_id: user.id,
-    }).select().single()
-
-    if (insp) {
-      // Save damages
-      if (result.damages?.length > 0) {
-        await supabase.from('damages').insert(
-          result.damages.map((d: any) => ({
-            inspection_id: insp.id,
-            truck_id: selectedTruck,
-            severity: d.severity,
-            location: d.location,
-            description: d.description,
-            recommendation: d.recommendation || '',
-            is_new: d.is_new,
-            user_id: user.id,
-          }))
-        )
-      }
-
-      // Upload photos
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        const path = `${user.id}/${selectedTruck}/${insp.id}/${Date.now()}_${i}.jpg`
-        await supabase.storage.from('inspection-photos').upload(path, file)
-        await supabase.from('inspection_photos').insert({ inspection_id: insp.id, truck_id: selectedTruck, storage_path: path, user_id: user.id })
-      }
+    // Load photo URLs
+    const urls: {[key:string]:string} = {}
+    for (const p of (photoRes.data || [])) {
+      const { data } = await supabase.storage.from('inspection-photos').createSignedUrl(p.storage_path, 3600)
+      if (data?.signedUrl) urls[p.id] = data.signedUrl
     }
-
-    setSaving(false)
-    setSaved(true)
+    setPhotoUrls(urls)
+    setLoadingDetail(false)
   }
 
-  const condColor = (c: string) => c === 'Good' ? '#27500A' : (c === 'Critical' || c === 'Poor') ? '#A32D2D' : '#633806'
-  const sevDot = (s: string) => s === 'critical' ? '#E24B4A' : s === 'moderate' ? '#EF9F27' : '#639922'
+  function closeTruck() { setSelectedTruck(null); setTruckDetail({ inspections:[], damages:[], photos:[] }); setPhotoUrls({}) }
 
-  return (
-    <div>
-      <Navbar />
-      <div style={{ maxWidth:720, margin:'0 auto', padding:'24px 16px' }}>
+  function startEdit(truck: any) {
+    setEditingId(truck.id)
+    setForm({ truck_number: truck.truck_number, driver_name: truck.driver_name, make: truck.make||'', model: truck.model||'', year: truck.year?.toString()||'', license_plate: truck.license_plate||'', vin: truck.vin||'' })
+    setShowAdd(false)
+    setSelectedTruck(null)
+  }
 
-        {/* Step indicators */}
-        <div style={{ display:'flex', gap:0, marginBottom:24, borderBottom:'0.5px solid rgba(0,0,0,0.1)' }}>
-          {['1. Setup', '2. Photos', '3. Results'].map((label, i) => (
-            <div key={label} onClick={() => { if (i+1 <= step) setStep(i+1) }} style={{ padding:'10px 20px', fontSize:13, fontWeight:500, cursor: i+1 <= step ? 'pointer' : 'default', borderBottom: step === i+1 ? '2px solid #185FA5' : '2px solid transparent', color: step === i+1 ? '#185FA5' : i+1 < step ? '#555' : '#aaa' }}>
-              {label}
+  function cancelEdit() { setEditingId(null); setForm(emptyForm); setShowAdd(false) }
+
+  async function saveTruck(e: React.FormEvent) {
+    e.preventDefault(); setSaving(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    if (editingId) {
+      await supabase.from('trucks').update({ ...form, year: parseInt(form.year)||0 }).eq('id', editingId)
+      setEditingId(null)
+    } else {
+      await supabase.from('trucks').insert({ ...form, year: parseInt(form.year)||0, user_id: user.id })
+      setShowAdd(false)
+    }
+    setForm(emptyForm); setSaving(false); loadTrucks()
+  }
+
+  async function deleteTruck(id: string) {
+    if (!confirm('Delete this truck and all its inspection records?')) return
+    await supabase.from('trucks').delete().eq('id', id)
+    setSelectedTruck(null); loadTrucks()
+  }
+
+  function lastInspection(truck: any) {
+    const insps = (truck.inspections || []).sort((a:any,b:any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    return insps[0] || null
+  }
+
+  function truckStatus(truck: any) {
+    const last = lastInspection(truck)
+    if (!last) return { label:'Never inspected', cls:'badge-gray' }
+    if (last.follow_up_required) return { label:'Follow-up needed', cls:'badge-red' }
+    if (last.overall_condition === 'Critical' || last.overall_condition === 'Poor') return { label:'Damage found', cls:'badge-red' }
+    if (last.overall_condition === 'Fair') return { label:'Minor issues', cls:'badge-amber' }
+    return { label:'All clear', cls:'badge-green' }
+  }
+
+  const condColor = (c:string) => c==='Good'?'#27500A':(c==='Critical'||c==='Poor')?'#A32D2D':c==='Fair'?'#633806':'#555'
+  const condBadge = (c:string) => c==='Good'?'badge-green':(c==='Critical'||c==='Poor')?'badge-red':c==='Fair'?'badge-amber':'badge-gray'
+  const sevDot = (s:string) => s==='critical'?'#E24B4A':s==='moderate'?'#EF9F27':'#639922'
+  const showForm = showAdd || editingId !== null
+
+  // ── Truck detail panel ──────────────────────────────────────────
+  if (selectedTruck) {
+    const { inspections, damages, photos } = truckDetail
+    const newDamages = damages.filter(d => d.is_new)
+    const baselineInsp = inspections.find(i => i.is_baseline)
+    const lastInsp = inspections[0]
+    return (
+      <div>
+        <Navbar />
+        <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px' }}>
+          {/* Back */}
+          <button onClick={closeTruck} style={{ background:'none', border:'none', color:'#185FA5', cursor:'pointer', fontSize:13, marginBottom:16, padding:0, display:'flex', alignItems:'center', gap:4 }}>← Back to fleet</button>
+
+          {/* Truck header */}
+          <div className="card" style={{ padding:'20px', marginBottom:14 }}>
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
+              <div>
+                <div style={{ fontSize:22, fontWeight:700 }}>#{selectedTruck.truck_number}</div>
+                <div style={{ fontSize:15, color:'#555', marginTop:2 }}>{selectedTruck.driver_name}</div>
+                <div style={{ fontSize:13, color:'#888', marginTop:4 }}>{[selectedTruck.year, selectedTruck.make, selectedTruck.model].filter(Boolean).join(' ')}</div>
+                {selectedTruck.license_plate && <div style={{ fontSize:13, color:'#888', marginTop:2 }}>Plate: {selectedTruck.license_plate}</div>}
+                {selectedTruck.vin && <div style={{ fontSize:12, color:'#888', marginTop:2, fontFamily:'monospace', letterSpacing:'0.04em' }}>VIN: {selectedTruck.vin}</div>}
+              </div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                <Link href={`/inspect?truck=${selectedTruck.id}`} className="btn btn-primary" style={{ fontSize:13 }}>+ New inspection</Link>
+                <button className="btn" onClick={() => startEdit(selectedTruck)} style={{ fontSize:13 }}>Edit truck</button>
+                <button onClick={() => deleteTruck(selectedTruck.id)} style={{ padding:'8px 14px', borderRadius:7, border:'0.5px solid rgba(200,0,0,0.2)', background:'transparent', color:'#A32D2D', cursor:'pointer', fontSize:13 }}>Delete</button>
+              </div>
             </div>
-          ))}
-        </div>
 
-        {/* Step 1: Setup */}
-        {step === 1 && (
-          <div className="card" style={{ padding:'24px' }}>
-            <div style={{ fontSize:15, fontWeight:500, marginBottom:20 }}>Inspection setup</div>
-            <div style={{ display:'grid', gap:14 }}>
-              <div>
-                <label>Truck *</label>
-                <select value={selectedTruck} onChange={e => setSelectedTruck(e.target.value)} required>
-                  <option value="">— select a truck —</option>
-                  {trucks.map(t => <option key={t.id} value={t.id}>#{t.truck_number} — {t.driver_name}</option>)}
-                </select>
-                {trucks.length === 0 && <div style={{ fontSize:12, color:'#A32D2D', marginTop:4 }}>No trucks found. <Link href="/fleet" style={{ color:'#185FA5' }}>Add a truck first →</Link></div>}
-              </div>
-              <div>
-                <label>Inspection type</label>
-                <select value={inspType} onChange={e => setInspType(e.target.value)}>
-                  <option>Routine weekly check</option>
-                  <option>Before trip</option>
-                  <option>After trip</option>
-                  <option>After incident report</option>
-                  <option>Monthly full inspection</option>
-                </select>
-              </div>
-              <div>
-                <label>Inspector name</label>
-                <input value={inspector} onChange={e => setInspector(e.target.value)} placeholder="Your name" />
-              </div>
-              <div>
-                <label>Notes (optional)</label>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any context or notes about this inspection..." rows={3} />
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <input type="checkbox" id="baseline" checked={isBaseline} onChange={e => setIsBaseline(e.target.checked)} style={{ width:'auto', margin:0 }} />
-                <label htmlFor="baseline" style={{ margin:0, cursor:'pointer' }}>This is a baseline inspection (first time documenting this truck)</label>
-              </div>
+            {/* Stats row */}
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px,1fr))', gap:10, marginTop:16 }}>
+              {[
+                { label:'Total inspections', value: inspections.length },
+                { label:'New damages', value: newDamages.length, color: newDamages.length > 0 ? '#A32D2D' : '#27500A' },
+                { label:'Total damages', value: damages.length },
+                { label:'Last inspection', value: lastInsp ? new Date(lastInsp.created_at).toLocaleDateString() : 'Never' },
+              ].map(s => (
+                <div key={s.label} style={{ background:'#f7f7f6', borderRadius:8, padding:'12px' }}>
+                  <div style={{ fontSize:11, color:'#888', marginBottom:4 }}>{s.label}</div>
+                  <div style={{ fontSize:16, fontWeight:600, color: s.color || '#1a1a1a' }}>{loadingDetail ? '—' : s.value}</div>
+                </div>
+              ))}
             </div>
-            <button className="btn btn-primary" style={{ marginTop:20 }} onClick={() => { if (!selectedTruck) { setError('Please select a truck.'); return } setError(''); setStep(2) }}>
-              Next: upload photos →
-            </button>
-            {error && <div style={{ marginTop:10, color:'#A32D2D', fontSize:13 }}>{error}</div>}
           </div>
-        )}
 
-        {/* Step 2: Photos */}
-        {step === 2 && (
-          <div className="card" style={{ padding:'24px' }}>
-            <div style={{ fontSize:15, fontWeight:500, marginBottom:6 }}>Upload photos</div>
-            <div style={{ fontSize:13, color:'#888', marginBottom:16 }}>Cover all sides of the truck: front, rear, driver side, passenger side, and any areas of concern.</div>
+          {loadingDetail && <div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading truck history...</div>}
 
-            <label htmlFor="photo-input" style={{ display:'block', border:'1.5px dashed rgba(0,0,0,0.2)', borderRadius:12, padding:'32px', textAlign:'center', cursor:'pointer', background:'#f9f9f8', marginBottom:14 }}>
-              <div style={{ fontSize:32, marginBottom:8, color:'#aaa' }}>⬆</div>
-              <div style={{ fontSize:14, fontWeight:500, marginBottom:4 }}>Tap to upload photos</div>
-              <div style={{ fontSize:12, color:'#aaa' }}>JPG, PNG, HEIC supported · Multiple files OK</div>
-              <input id="photo-input" type="file" accept="image/*" multiple onChange={handleFiles} style={{ display:'none' }} />
-            </label>
+          {!loadingDetail && (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
 
-            {previews.length > 0 && (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px,1fr))', gap:8, marginBottom:16 }}>
-                {previews.map((src, i) => (
-                  <div key={i} style={{ position:'relative' }}>
-                    <img src={src} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)' }} />
-                    <button onClick={() => removeFile(i)} style={{ position:'absolute', top:4, right:4, width:20, height:20, borderRadius:'50%', background:'rgba(0,0,0,0.6)', color:'white', border:'none', cursor:'pointer', fontSize:11, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+              {/* Photos */}
+              <div className="card" style={{ padding:'16px', gridColumn:'1/-1' }}>
+                <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Inspection photos ({photos.length})</div>
+                {photos.length === 0 ? (
+                  <div style={{ color:'#aaa', fontSize:13, padding:'20px 0', textAlign:'center' }}>No photos yet — run an inspection to capture photos</div>
+                ) : (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px,1fr))', gap:8 }}>
+                    {photos.map(p => (
+                      <div key={p.id} style={{ position:'relative' }}>
+                        {photoUrls[p.id] ? (
+                          <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', cursor:'pointer' }} onClick={() => window.open(photoUrls[p.id], '_blank')} />
+                        ) : (
+                          <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>
+                        )}
+                        <div style={{ fontSize:10, color:'#aaa', marginTop:3, textAlign:'center' }}>{new Date(p.created_at).toLocaleDateString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Inspection history */}
+              <div className="card" style={{ padding:'16px' }}>
+                <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Inspection history ({inspections.length})</div>
+                {inspections.length === 0 ? (
+                  <div style={{ color:'#aaa', fontSize:13, padding:'16px 0', textAlign:'center' }}>No inspections yet</div>
+                ) : inspections.map(insp => (
+                  <div key={insp.id} style={{ padding:'10px 0', borderBottom:'0.5px solid rgba(0,0,0,0.07)', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:500 }}>{insp.inspection_type} {insp.is_baseline && <span style={{ fontSize:10, background:'#E6F1FB', color:'#0C447C', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>baseline</span>}</div>
+                      <div style={{ fontSize:11, color:'#888', marginTop:2 }}>{new Date(insp.created_at).toLocaleDateString()} · {insp.inspector_name}</div>
+                      {insp.summary && <div style={{ fontSize:11, color:'#555', marginTop:3, lineHeight:1.5 }}>{insp.summary}</div>}
+                    </div>
+                    <span className={`badge ${condBadge(insp.overall_condition)}`} style={{ flexShrink:0 }}>{insp.overall_condition}</span>
                   </div>
                 ))}
               </div>
-            )}
 
-            {error && <div style={{ color:'#A32D2D', fontSize:13, marginBottom:12 }}>{error}</div>}
-
-            <div style={{ display:'flex', gap:8 }}>
-              <button className="btn" onClick={() => setStep(1)}>← Back</button>
-              <button className="btn btn-primary" onClick={runAnalysis} disabled={analyzing}>
-                {analyzing ? 'Analyzing with AI...' : `Analyze ${files.length > 0 ? files.length + ' photo' + (files.length>1?'s':'') : ''} →`}
-              </button>
-            </div>
-
-            {analyzing && (
-              <div style={{ textAlign:'center', padding:'32px', marginTop:16 }}>
-                <div style={{ width:32, height:32, border:'2px solid #ddd', borderTopColor:'#185FA5', borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto 12px' }} />
-                <div style={{ fontSize:13, color:'#888' }}>Analyzing photos with AI vision...</div>
-                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              {/* Damage log */}
+              <div className="card" style={{ padding:'16px' }}>
+                <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Damage log ({damages.length})</div>
+                {damages.length === 0 ? (
+                  <div style={{ color:'#aaa', fontSize:13, padding:'16px 0', textAlign:'center' }}>No damage recorded</div>
+                ) : damages.map(d => (
+                  <div key={d.id} style={{ display:'flex', gap:8, padding:'10px 0', borderBottom:'0.5px solid rgba(0,0,0,0.07)' }}>
+                    <div style={{ width:8, height:8, borderRadius:'50%', background: sevDot(d.severity), marginTop:4, flexShrink:0 }} />
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:13, fontWeight:500 }}>{d.location} {d.is_new && <span style={{ fontSize:10, background:'#FCEBEB', color:'#A32D2D', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>NEW</span>}</div>
+                      <div style={{ fontSize:11, color:'#555', marginTop:2 }}>{d.description}</div>
+                      {d.recommendation && <div style={{ fontSize:11, color:'#185FA5', marginTop:2 }}>→ {d.recommendation}</div>}
+                      <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>{new Date((d.inspections as any)?.created_at).toLocaleDateString()} · {(d.inspections as any)?.inspection_type}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
+
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ── Fleet list/grid view ────────────────────────────────────────
+  return (
+    <div>
+      <Navbar />
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px' }}>
+
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:10 }}>
+          <div>
+            <div style={{ fontSize:18, fontWeight:600 }}>Fleet</div>
+            <div style={{ fontSize:13, color:'#888', marginTop:2 }}>{trucks.length} truck{trucks.length !== 1 ? 's' : ''}</div>
+          </div>
+          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            {/* View toggle */}
+            <div style={{ display:'flex', border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:8, overflow:'hidden' }}>
+              <button onClick={() => setViewMode('grid')} style={{ padding:'7px 12px', background: viewMode==='grid' ? '#185FA5' : 'white', color: viewMode==='grid' ? 'white' : '#555', border:'none', cursor:'pointer', fontSize:13 }}>⊞ Grid</button>
+              <button onClick={() => setViewMode('list')} style={{ padding:'7px 12px', background: viewMode==='list' ? '#185FA5' : 'white', color: viewMode==='list' ? 'white' : '#555', border:'none', cursor:'pointer', fontSize:13, borderLeft:'0.5px solid rgba(0,0,0,0.15)' }}>☰ List</button>
+            </div>
+            <button className="btn btn-primary" onClick={() => { setShowAdd(!showAdd); setEditingId(null); setForm(emptyForm) }}>+ Add truck</button>
+          </div>
+        </div>
+
+        {/* Add/Edit form */}
+        {showForm && (
+          <div className="card" style={{ padding:'20px', marginBottom:16, border: editingId ? '1.5px solid #185FA5' : undefined }}>
+            <div style={{ fontSize:14, fontWeight:500, marginBottom:16 }}>{editingId ? 'Edit truck' : 'Add new truck'}</div>
+            <form onSubmit={saveTruck}>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+                <div><label>Truck number *</label><input value={form.truck_number} onChange={e => setForm({...form, truck_number:e.target.value})} placeholder="e.g. TK-001" required /></div>
+                <div><label>Driver name *</label><input value={form.driver_name} onChange={e => setForm({...form, driver_name:e.target.value})} placeholder="e.g. Carlos Martinez" required /></div>
+                <div><label>Make</label><input value={form.make} onChange={e => setForm({...form, make:e.target.value})} placeholder="e.g. Freightliner" /></div>
+                <div><label>Model</label><input value={form.model} onChange={e => setForm({...form, model:e.target.value})} placeholder="e.g. Cascadia" /></div>
+                <div><label>Year</label><input value={form.year} onChange={e => setForm({...form, year:e.target.value})} placeholder="e.g. 2021" type="number" /></div>
+                <div><label>License plate</label><input value={form.license_plate} onChange={e => setForm({...form, license_plate:e.target.value})} placeholder="e.g. ABC-1234" /></div>
+                <div style={{ gridColumn:'1/-1' }}><label>VIN</label><input value={form.vin} onChange={e => setForm({...form, vin:e.target.value.toUpperCase()})} placeholder="17-character VIN" maxLength={17} style={{ textTransform:'uppercase', fontFamily:'monospace', letterSpacing:'0.05em' }} /></div>
+              </div>
+              <div style={{ display:'flex', gap:8 }}>
+                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Save changes' : 'Save truck'}</button>
+                <button type="button" className="btn" onClick={cancelEdit}>Cancel</button>
+              </div>
+            </form>
           </div>
         )}
 
-        {/* Step 3: Results */}
-        {step === 3 && result && (
-          <div>
-            <div className="card" style={{ padding:'24px', marginBottom:12 }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-                <div style={{ fontSize:15, fontWeight:500 }}>Analysis complete</div>
-                <div style={{ fontSize:20, fontWeight:700, color: condColor(result.overallCondition) }}>{result.overallCondition}</div>
-              </div>
-              <div style={{ fontSize:13, color:'#555', lineHeight:1.6, marginBottom:14 }}>{result.summary}</div>
+        {loading && <div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading...</div>}
+        {!loading && trucks.length === 0 && !showForm && (
+          <div className="card" style={{ padding:'48px', textAlign:'center', color:'#888' }}>
+            <div style={{ fontSize:14, marginBottom:8 }}>No trucks yet</div>
+            <button className="btn btn-primary" onClick={() => setShowAdd(true)}>Add your first truck</button>
+          </div>
+        )}
 
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap', fontSize:12, color:'#888', marginBottom:16 }}>
-                <span>Urgency: <strong style={{ color:'#1a1a1a' }}>{result.estimatedRepairUrgency}</strong></span>
-                {result.followUpRequired && <span style={{ color:'#A32D2D', fontWeight:500 }}>⚠ Follow-up required</span>}
-              </div>
-
-              {result.damages?.length > 0 ? (
-                <div>
-                  <div style={{ fontSize:12, fontWeight:500, color:'#888', marginBottom:8 }}>DAMAGE FINDINGS ({result.damages.length})</div>
-                  {result.damages.map((d: any, i: number) => (
-                    <div key={i} style={{ display:'flex', gap:10, padding:'10px', border:'0.5px solid rgba(0,0,0,0.08)', borderRadius:8, marginBottom:8, background: d.is_new ? '#FCEBEB' : 'transparent' }}>
-                      <div style={{ width:8, height:8, borderRadius:'50%', background: sevDot(d.severity), marginTop:5, flexShrink:0 }} />
-                      <div>
-                        <div style={{ fontSize:13, fontWeight:500 }}>{d.location} {d.is_new && <span style={{ fontSize:11, background:'#FCEBEB', color:'#A32D2D', padding:'1px 6px', borderRadius:10, marginLeft:4 }}>NEW</span>}</div>
-                        <div style={{ fontSize:12, color:'#555', marginTop:2 }}>{d.description}</div>
-                        {d.recommendation && <div style={{ fontSize:12, color:'#185FA5', marginTop:3 }}>→ {d.recommendation}</div>}
-                      </div>
+        {/* GRID VIEW */}
+        {viewMode === 'grid' && (
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:12 }}>
+            {trucks.map(truck => {
+              const status = truckStatus(truck)
+              const last = lastInspection(truck)
+              const isEditing = editingId === truck.id
+              return (
+                <div key={truck.id} className="card" style={{ padding:'16px', cursor:'pointer', border: isEditing ? '1.5px solid #185FA5' : undefined, transition:'border-color 0.15s' }} onClick={() => !showForm && openTruck(truck)}>
+                  <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
+                    <div>
+                      <div style={{ fontSize:15, fontWeight:600 }}>#{truck.truck_number}</div>
+                      <div style={{ fontSize:13, color:'#555', marginTop:2 }}>{truck.driver_name}</div>
                     </div>
-                  ))}
+                    <span className={`badge ${status.cls}`}>{status.label}</span>
+                  </div>
+                  {(truck.make || truck.model) && <div style={{ fontSize:12, color:'#888', marginBottom:4 }}>{[truck.year, truck.make, truck.model].filter(Boolean).join(' ')}</div>}
+                  {truck.license_plate && <div style={{ fontSize:12, color:'#888', marginBottom:2 }}>Plate: {truck.license_plate}</div>}
+                  {truck.vin && <div style={{ fontSize:11, color:'#aaa', marginBottom:8, fontFamily:'monospace' }}>VIN: {truck.vin}</div>}
+                  <div style={{ fontSize:12, color:'#aaa', marginBottom:12 }}>{last ? `Last inspected: ${new Date(last.created_at).toLocaleDateString()}` : 'No inspections yet'}</div>
+                  <div style={{ display:'flex', gap:6 }} onClick={e => e.stopPropagation()}>
+                    <Link href={`/inspect?truck=${truck.id}`} className="btn" style={{ flex:1, justifyContent:'center', fontSize:12, padding:'6px 10px' }}>Inspect</Link>
+                    <button onClick={() => startEdit(truck)} style={{ padding:'6px 10px', borderRadius:7, border:'0.5px solid rgba(0,0,0,0.15)', background:'transparent', color:'#185FA5', cursor:'pointer', fontSize:12 }}>Edit</button>
+                    <button onClick={() => deleteTruck(truck.id)} style={{ padding:'6px 10px', borderRadius:7, border:'0.5px solid rgba(200,0,0,0.2)', background:'transparent', color:'#A32D2D', cursor:'pointer', fontSize:12 }}>Delete</button>
+                  </div>
                 </div>
-              ) : (
-                <div style={{ padding:'16px', background:'#EAF3DE', borderRadius:8, fontSize:13, color:'#27500A' }}>No damage detected in submitted photos.</div>
-              )}
-            </div>
+              )
+            })}
+          </div>
+        )}
 
-            <div style={{ display:'flex', gap:8 }}>
-              {!saved ? (
-                <button className="btn btn-primary" onClick={saveInspection} disabled={saving}>
-                  {saving ? 'Saving...' : 'Save to fleet record'}
-                </button>
-              ) : (
-                <div style={{ padding:'8px 16px', background:'#EAF3DE', color:'#27500A', borderRadius:8, fontSize:13, fontWeight:500 }}>✓ Saved to fleet record</div>
-              )}
-              <Link href="/" className="btn">Back to dashboard</Link>
-              <button className="btn" onClick={() => { setStep(1); setResult(null); setFiles([]); setPreviews([]); setSaved(false) }}>New inspection</button>
+        {/* LIST VIEW */}
+        {viewMode === 'list' && (
+          <div className="card" style={{ overflow:'hidden' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto auto', gap:0, padding:'10px 16px', background:'#f7f7f6', borderBottom:'0.5px solid rgba(0,0,0,0.08)', fontSize:11, fontWeight:500, color:'#888', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+              <span>Truck</span><span>Driver</span><span>Last inspection</span><span>Status</span><span></span>
             </div>
+            {trucks.map((truck, i) => {
+              const status = truckStatus(truck)
+              const last = lastInspection(truck)
+              return (
+                <div key={truck.id} style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto auto', gap:0, padding:'12px 16px', borderBottom: i < trucks.length-1 ? '0.5px solid rgba(0,0,0,0.07)' : 'none', alignItems:'center', cursor:'pointer', background:'white', transition:'background 0.1s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background='#f9f9f8')}
+                  onMouseLeave={e => (e.currentTarget.style.background='white')}
+                  onClick={() => openTruck(truck)}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:600 }}>#{truck.truck_number}</div>
+                    {truck.vin && <div style={{ fontSize:11, color:'#aaa', fontFamily:'monospace' }}>{truck.vin}</div>}
+                  </div>
+                  <div style={{ fontSize:13, color:'#555' }}>{truck.driver_name}</div>
+                  <div style={{ fontSize:12, color:'#888' }}>{last ? new Date(last.created_at).toLocaleDateString() : 'Never'}</div>
+                  <span className={`badge ${status.cls}`}>{status.label}</span>
+                  <div style={{ display:'flex', gap:4, marginLeft:8 }} onClick={e => e.stopPropagation()}>
+                    <Link href={`/inspect?truck=${truck.id}`} className="btn" style={{ fontSize:11, padding:'4px 10px' }}>Inspect</Link>
+                    <button onClick={() => startEdit(truck)} style={{ padding:'4px 10px', borderRadius:6, border:'0.5px solid rgba(0,0,0,0.15)', background:'transparent', color:'#185FA5', cursor:'pointer', fontSize:11 }}>Edit</button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
     </div>
   )
-}
-
-export default function InspectPage() {
-  return <Suspense fallback={<div />}><InspectContent /></Suspense>
 }
