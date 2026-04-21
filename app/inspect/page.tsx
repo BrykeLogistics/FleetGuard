@@ -387,7 +387,7 @@ function InspectContent() {
                   <div style={{ fontSize:15, fontWeight:500 }}>Guided capture</div>
                   <button onClick={() => setShowGuided(false)} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:13 }}>✕ Cancel</button>
                 </div>
-                <GuidedCapture onComplete={handleGuidedComplete} onCancel={() => setShowGuided(false)} />
+                <GuidedCapture onComplete={handleGuidedComplete} onCancel={() => setShowGuided(false)} vehicleType={trucks.find(t => t.id === selectedTruck)?.vehicle_type} />
               </div>
             ) : (
               <div>
