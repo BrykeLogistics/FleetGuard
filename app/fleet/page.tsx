@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
 
-const emptyForm = { truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'' }
+const emptyForm = { truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'', vehicle_type:'' }
 
 export default function FleetPage() {
   const [trucks, setTrucks] = useState<any[]>([])
@@ -14,6 +14,8 @@ export default function FleetPage() {
   const [editingId, setEditingId] = useState<string|null>(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [vinLoading, setVinLoading] = useState(false)
+  const [vinMessage, setVinMessage] = useState('')
   const [selectedTruck, setSelectedTruck] = useState<any>(null)
   const [truckDetail, setTruckDetail] = useState<{inspections:any[], damages:any[], photos:any[]}>({ inspections:[], damages:[], photos:[] })
   const [loadingDetail, setLoadingDetail] = useState(false)
@@ -53,9 +55,60 @@ export default function FleetPage() {
 
   function closeTruck() { setSelectedTruck(null); setTruckDetail({ inspections:[], damages:[], photos:[] }); setPhotoUrls({}) }
 
+  async function lookupVin(vin: string) {
+    if (!vin || vin.length < 11) { setVinMessage('Enter at least 11 characters of the VIN'); return }
+    setVinLoading(true); setVinMessage('')
+    try {
+      const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`)
+      const data = await res.json()
+      const results = data.Results || []
+      const get = (var_: string) => results.find((r: any) => r.Variable === var_)?.Value || ''
+      const make = get('Make')
+      const model = get('Model')
+      const year = get('Model Year')
+      const bodyClass = get('Body Class') || ''
+      const gvwr = get('Gross Vehicle Weight Rating From') || ''
+
+      // Detect vehicle type from NHTSA body class
+      let vehicle_type = ''
+      const body = bodyClass.toLowerCase()
+      const gvwrNum = parseInt(gvwr.replace(/[^0-9]/g, '')) || 0
+      if (body.includes('van') && (body.includes('cargo') || body.includes('delivery') || model.toLowerCase().includes('sprinter') || model.toLowerCase().includes('transit') || model.toLowerCase().includes('promaster'))) {
+        vehicle_type = 'sprinter'
+      } else if (body.includes('step van') || body.includes('walk-in') || body.includes('walk in')) {
+        vehicle_type = 'stepvan'
+      } else if (body.includes('truck') && (body.includes('box') || body.includes('straight') || gvwrNum >= 10000)) {
+        vehicle_type = 'boxtruck'
+      } else if (body.includes('van')) {
+        vehicle_type = 'sprinter'
+      } else if (gvwrNum >= 26000) {
+        vehicle_type = 'boxtruck'
+      } else if (gvwrNum >= 10000) {
+        vehicle_type = 'stepvan'
+      }
+
+      if (make && make !== 'Not Applicable') {
+        setForm(prev => ({
+          ...prev,
+          make: make !== 'Not Applicable' ? make : prev.make,
+          model: model !== 'Not Applicable' ? model : prev.model,
+          year: year !== 'Not Applicable' ? year : prev.year,
+          vehicle_type: vehicle_type || prev.vehicle_type,
+        }))
+        const typeLabel = vehicle_type === 'sprinter' ? 'Sprinter/Cargo Van' : vehicle_type === 'stepvan' ? 'Step Van' : vehicle_type === 'boxtruck' ? 'Box Truck' : ''
+        setVinMessage(`✓ Found: ${year} ${make} ${model}${typeLabel ? ` · ${typeLabel}` : ''} — review and confirm below`)
+      } else {
+        setVinMessage('VIN not found — please fill in details manually')
+      }
+    } catch {
+      setVinMessage('Lookup failed — please fill in details manually')
+    }
+    setVinLoading(false)
+  }
+
   function startEdit(truck: any) {
     setEditingId(truck.id)
-    setForm({ truck_number: truck.truck_number, driver_name: truck.driver_name, make: truck.make||'', model: truck.model||'', year: truck.year?.toString()||'', license_plate: truck.license_plate||'', vin: truck.vin||'' })
+    setForm({ truck_number: truck.truck_number, driver_name: truck.driver_name, make: truck.make||'', model: truck.model||'', year: truck.year?.toString()||'', license_plate: truck.license_plate||'', vin: truck.vin||'', vehicle_type: truck.vehicle_type||'' })
     setShowAdd(false)
     setSelectedTruck(null)
   }
@@ -248,7 +301,26 @@ export default function FleetPage() {
                 <div><label>Model</label><input value={form.model} onChange={e => setForm({...form, model:e.target.value})} placeholder="e.g. Cascadia" /></div>
                 <div><label>Year</label><input value={form.year} onChange={e => setForm({...form, year:e.target.value})} placeholder="e.g. 2021" type="number" /></div>
                 <div><label>License plate</label><input value={form.license_plate} onChange={e => setForm({...form, license_plate:e.target.value})} placeholder="e.g. ABC-1234" /></div>
-                <div style={{ gridColumn:'1/-1' }}><label>VIN</label><input value={form.vin} onChange={e => setForm({...form, vin:e.target.value.toUpperCase()})} placeholder="17-character VIN" maxLength={17} style={{ textTransform:'uppercase', fontFamily:'monospace', letterSpacing:'0.05em' }} /></div>
+                <div style={{ gridColumn:'1/-1' }}>
+                  <label>VIN</label>
+                  <div style={{ display:'flex', gap:8 }}>
+                    <input value={form.vin} onChange={e => { setForm({...form, vin:e.target.value.toUpperCase()}); setVinMessage('') }} placeholder="17-character VIN" maxLength={17} style={{ textTransform:'uppercase', fontFamily:'monospace', letterSpacing:'0.05em', flex:1 }} />
+                    <button type="button" onClick={() => lookupVin(form.vin)} disabled={vinLoading} style={{ padding:'8px 14px', background:'#185FA5', color:'white', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', flexShrink:0, opacity: vinLoading ? 0.7 : 1 }}>
+                      {vinLoading ? 'Looking up...' : 'Look up VIN'}
+                    </button>
+                  </div>
+                  {vinMessage && <div style={{ fontSize:12, marginTop:5, color: vinMessage.startsWith('✓') ? '#27500A' : '#A32D2D' }}>{vinMessage}</div>}
+                </div>
+                <div style={{ gridColumn:'1/-1' }}>
+                  <label>Vehicle type</label>
+                  <select value={form.vehicle_type} onChange={e => setForm({...form, vehicle_type:e.target.value})}>
+                    <option value="">— select vehicle type —</option>
+                    <option value="sprinter">Sprinter / Cargo Van (e.g. Mercedes Sprinter, Ford Transit, Ram ProMaster)</option>
+                    <option value="stepvan">Step Van / Walk-in Van (e.g. Grumman, Utilimaster, P-series)</option>
+                    <option value="boxtruck">Box Truck / Straight Truck (e.g. Freightliner M2, Isuzu NPR)</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
               </div>
               <div style={{ display:'flex', gap:8 }}>
                 <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Save changes' : 'Save truck'}</button>
@@ -314,6 +386,7 @@ export default function FleetPage() {
                   <div>
                     <div style={{ fontSize:13, fontWeight:600 }}>#{truck.truck_number}</div>
                     {truck.vin && <div style={{ fontSize:11, color:'#aaa', fontFamily:'monospace' }}>{truck.vin}</div>}
+                  {truck.vehicle_type && <div style={{ fontSize:10, color:'#888', marginTop:2 }}>{truck.vehicle_type==='sprinter'?'Sprinter Van':truck.vehicle_type==='stepvan'?'Step Van':truck.vehicle_type==='boxtruck'?'Box Truck':'Other'}</div>}
                   </div>
                   <div style={{ fontSize:13, color:'#555' }}>{truck.driver_name}</div>
                   <div style={{ fontSize:12, color:'#888' }}>{last ? new Date(last.created_at).toLocaleDateString() : 'Never'}</div>
