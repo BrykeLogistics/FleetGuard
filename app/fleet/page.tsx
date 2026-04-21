@@ -4,11 +4,14 @@ import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
 
+const emptyForm = { truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'' }
+
 export default function FleetPage() {
   const [trucks, setTrucks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState({ truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'' })
+  const [editingId, setEditingId] = useState<string|null>(null)
+  const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { loadTrucks() }, [])
@@ -21,14 +24,32 @@ export default function FleetPage() {
     setLoading(false)
   }
 
-  async function addTruck(e: React.FormEvent) {
+  function startEdit(truck: any) {
+    setEditingId(truck.id)
+    setForm({ truck_number: truck.truck_number, driver_name: truck.driver_name, make: truck.make || '', model: truck.model || '', year: truck.year?.toString() || '', license_plate: truck.license_plate || '', vin: truck.vin || '' })
+    setShowAdd(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setForm(emptyForm)
+    setShowAdd(false)
+  }
+
+  async function saveTruck(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('trucks').insert({ ...form, year: parseInt(form.year) || 0, user_id: user.id })
-    setForm({ truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'' })
-    setShowAdd(false)
+    if (editingId) {
+      await supabase.from('trucks').update({ ...form, year: parseInt(form.year) || 0 }).eq('id', editingId)
+      setEditingId(null)
+    } else {
+      await supabase.from('trucks').insert({ ...form, year: parseInt(form.year) || 0, user_id: user.id })
+      setShowAdd(false)
+    }
+    setForm(emptyForm)
     setSaving(false)
     loadTrucks()
   }
@@ -54,6 +75,8 @@ export default function FleetPage() {
     return { label: 'All clear', cls: 'badge-green' }
   }
 
+  const showForm = showAdd || editingId !== null
+
   return (
     <div>
       <Navbar />
@@ -64,14 +87,16 @@ export default function FleetPage() {
             <div style={{ fontSize:18, fontWeight:600 }}>Fleet</div>
             <div style={{ fontSize:13, color:'#888', marginTop:2 }}>{trucks.length} truck{trucks.length !== 1 ? 's' : ''}</div>
           </div>
-          <button className="btn btn-primary" onClick={() => setShowAdd(!showAdd)}>+ Add truck</button>
+          <button className="btn btn-primary" onClick={() => { setShowAdd(!showAdd); setEditingId(null); setForm(emptyForm) }}>+ Add truck</button>
         </div>
 
-        {/* Add truck form */}
-        {showAdd && (
-          <div className="card" style={{ padding:'20px', marginBottom:16 }}>
-            <div style={{ fontSize:14, fontWeight:500, marginBottom:16 }}>Add new truck</div>
-            <form onSubmit={addTruck}>
+        {/* Add / Edit form */}
+        {showForm && (
+          <div className="card" style={{ padding:'20px', marginBottom:16, border: editingId ? '1.5px solid #185FA5' : undefined }}>
+            <div style={{ fontSize:14, fontWeight:500, marginBottom:16 }}>
+              {editingId ? 'Edit truck' : 'Add new truck'}
+            </div>
+            <form onSubmit={saveTruck}>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
                 <div><label>Truck number *</label><input value={form.truck_number} onChange={e => setForm({...form, truck_number:e.target.value})} placeholder="e.g. TK-001" required /></div>
                 <div><label>Driver name *</label><input value={form.driver_name} onChange={e => setForm({...form, driver_name:e.target.value})} placeholder="e.g. Carlos Martinez" required /></div>
@@ -79,11 +104,11 @@ export default function FleetPage() {
                 <div><label>Model</label><input value={form.model} onChange={e => setForm({...form, model:e.target.value})} placeholder="e.g. Cascadia" /></div>
                 <div><label>Year</label><input value={form.year} onChange={e => setForm({...form, year:e.target.value})} placeholder="e.g. 2021" type="number" /></div>
                 <div><label>License plate</label><input value={form.license_plate} onChange={e => setForm({...form, license_plate:e.target.value})} placeholder="e.g. ABC-1234" /></div>
-                <div><label>VIN</label><input value={form.vin} onChange={e => setForm({...form, vin:e.target.value.toUpperCase()})} placeholder="17-character VIN" maxLength={17} style={{textTransform:'uppercase'}} /></div>
+                <div style={{ gridColumn:'1/-1' }}><label>VIN</label><input value={form.vin} onChange={e => setForm({...form, vin:e.target.value.toUpperCase()})} placeholder="17-character VIN" maxLength={17} style={{textTransform:'uppercase', fontFamily:'monospace', letterSpacing:'0.05em'}} /></div>
               </div>
               <div style={{ display:'flex', gap:8 }}>
-                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save truck'}</button>
-                <button type="button" className="btn" onClick={() => setShowAdd(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Save changes' : 'Save truck'}</button>
+                <button type="button" className="btn" onClick={cancelEdit}>Cancel</button>
               </div>
             </form>
           </div>
@@ -91,7 +116,7 @@ export default function FleetPage() {
 
         {/* Trucks grid */}
         {loading && <div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading...</div>}
-        {!loading && trucks.length === 0 && !showAdd && (
+        {!loading && trucks.length === 0 && !showForm && (
           <div className="card" style={{ padding:'48px', textAlign:'center', color:'#888' }}>
             <div style={{ fontSize:14, marginBottom:8 }}>No trucks yet</div>
             <button className="btn btn-primary" onClick={() => setShowAdd(true)}>Add your first truck</button>
@@ -102,8 +127,9 @@ export default function FleetPage() {
           {trucks.map(truck => {
             const status = truckStatus(truck)
             const last = lastInspection(truck)
+            const isEditing = editingId === truck.id
             return (
-              <div key={truck.id} className="card" style={{ padding:'16px' }}>
+              <div key={truck.id} className="card" style={{ padding:'16px', border: isEditing ? '1.5px solid #185FA5' : undefined }}>
                 <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
                   <div>
                     <div style={{ fontSize:15, fontWeight:600 }}>#{truck.truck_number}</div>
@@ -112,16 +138,17 @@ export default function FleetPage() {
                   <span className={`badge ${status.cls}`}>{status.label}</span>
                 </div>
                 {(truck.make || truck.model) && (
-                  <div style={{ fontSize:12, color:'#888', marginBottom:6 }}>{[truck.year, truck.make, truck.model].filter(Boolean).join(' ')}</div>
+                  <div style={{ fontSize:12, color:'#888', marginBottom:4 }}>{[truck.year, truck.make, truck.model].filter(Boolean).join(' ')}</div>
                 )}
                 {truck.license_plate && <div style={{ fontSize:12, color:'#888', marginBottom:4 }}>Plate: {truck.license_plate}</div>}
-                {truck.vin && <div style={{ fontSize:12, color:'#888', marginBottom:8, fontFamily:'monospace' }}>VIN: {truck.vin}</div>}
+                {truck.vin && <div style={{ fontSize:12, color:'#888', marginBottom:8, fontFamily:'monospace', letterSpacing:'0.03em' }}>VIN: {truck.vin}</div>}
                 <div style={{ fontSize:12, color:'#aaa', marginBottom:12 }}>
                   {last ? `Last inspected: ${new Date(last.created_at).toLocaleDateString()}` : 'No inspections yet'}
                 </div>
                 <div style={{ display:'flex', gap:6 }}>
                   <Link href={`/inspect?truck=${truck.id}`} className="btn" style={{ flex:1, justifyContent:'center', fontSize:12, padding:'6px 10px' }}>Inspect</Link>
                   <Link href={`/reports?truck=${truck.id}`} className="btn" style={{ flex:1, justifyContent:'center', fontSize:12, padding:'6px 10px' }}>History</Link>
+                  <button onClick={() => startEdit(truck)} style={{ padding:'6px 10px', borderRadius:7, border:'0.5px solid rgba(0,0,0,0.15)', background:'transparent', color:'#185FA5', cursor:'pointer', fontSize:12 }}>Edit</button>
                   <button onClick={() => deleteTruck(truck.id)} style={{ padding:'6px 10px', borderRadius:7, border:'0.5px solid rgba(200,0,0,0.2)', background:'transparent', color:'#A32D2D', cursor:'pointer', fontSize:12 }}>Delete</button>
                 </div>
               </div>
