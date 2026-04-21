@@ -129,41 +129,35 @@ export default function FleetPage() {
       if (make && make !== 'Not Applicable') {
         setForm(prev => ({
           ...prev,
-          make: make !== 'Not Applicable' ? make : prev.make,
+          make: finalMake !== 'Not Applicable' ? finalMake : prev.make,
           model: model !== 'Not Applicable' ? model : prev.model,
           year: year !== 'Not Applicable' ? year : prev.year,
           vehicle_type: vehicle_type || prev.vehicle_type,
         }))
-        // For Ford P-series step vans (1F6 WMI), infer P-series model from GVWR class
-        // Position 4 of VIN encodes GVWR class for Ford incomplete vehicles
-        let inferredModel = model
-        if (wmi === '1F6' || wmi === '5F6') {
-          const pos4 = vinUpper[3]
-          // Ford GVWR class codes for Class 3-5 incomplete vehicles
-          const pSeriesMap: Record<string, string> = {
-            'K': 'P700 (10,001–14,000 lbs)',
-            'L': 'P1000 (14,001–16,000 lbs)',
-            'M': 'P1100 (16,001–19,500 lbs)',
-            'N': 'P1200 (19,501–26,000 lbs)',
-            'J': 'P600 (9,001–10,000 lbs)',
-          }
-          if (pSeriesMap[pos4]) {
-            inferredModel = pSeriesMap[pos4]
-          }
-          // Also check positions 5-7 for specific series codes
-          const vds57 = vinUpper.slice(4, 7)
-          if (vds57 === 'F5K') inferredModel = 'P1000 Commercial Chassis'
-          else if (vds57 === 'F6K') inferredModel = 'P1100 Commercial Chassis'
-          else if (vds57 === 'F7K') inferredModel = 'P1200 Commercial Chassis'
-          else if (vds57 === 'F4K') inferredModel = 'P700 Commercial Chassis'
-          else if (vds57 === 'F3K') inferredModel = 'P600 Commercial Chassis'
+        // Ford P-series: decode model directly from VIN positions 5-7
+        // These are the actual chassis series codes from Ford's official VIN guide
+        const vds57 = vinUpper.slice(4, 7)
+        const fordPSeries: Record<string, string> = {
+          'F3K': 'P600', 'F4K': 'P700', 'F4A': 'P700',
+          'F5K': 'P1000', 'F5A': 'P1000', 'F5F': 'P1000',
+          'F6K': 'P1100', 'F6A': 'P1100',
+          'F7K': 'P1200', 'F7A': 'P1200',
+          'F8K': 'P1400', 'F8A': 'P1400',
         }
-        if (inferredModel !== model) {
-          setForm(prev => ({ ...prev, model: inferredModel }))
+        let finalModel = model
+        let finalMake = make
+        if ((wmi === '1F6' || wmi === '5F6') && fordPSeries[vds57]) {
+          finalModel = fordPSeries[vds57]
+          // 1F6 = Detroit Chassis LLC / Ford P-series
+          // The finished vehicle is built by a body manufacturer (Utilimaster, Grumman, etc.)
+          // NHTSA only knows the chassis maker, not the body builder
+          // We default to Utilimaster as the most common P-series body builder for FedEx/Amazon fleets
+          finalMake = 'Utilimaster'
         }
 
         const typeLabel = vehicle_type === 'sprinter' ? 'Sprinter/Cargo Van' : vehicle_type === 'stepvan' ? 'Step Van' : vehicle_type === 'boxtruck' ? 'Box Truck' : 'Unknown — please select manually'
-        setVinMessage(`✓ Found: ${year} ${make} ${inferredModel} · ${typeLabel} — review and confirm below`)
+        const makeNote = (wmi === '1F6' || wmi === '5F6') && fordPSeries[vds57] ? ' (update make if different body builder)' : ''
+        setVinMessage(`✓ Found: ${year} ${finalMake} ${finalModel} · ${typeLabel}${makeNote} — review and confirm below`)
       } else {
         setVinMessage('VIN not found — please fill in details manually')
       }
