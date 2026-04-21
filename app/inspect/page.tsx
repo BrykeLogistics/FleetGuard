@@ -319,130 +319,140 @@ function InspectContent() {
         {/* ── Step 2: Media ── */}
         {step === 2 && (
           <div className="card" style={{ padding:'24px' }}>
-            <div style={{ fontSize:15, fontWeight:500, marginBottom:6 }}>Upload media</div>
 
-            {/* Guided capture banner */}
-            <div style={{ background:'#E6F1FB', borderRadius:10, padding:'14px 16px', marginBottom:16, display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+            {/* Show guided capture fullscreen when active */}
+            {showGuided ? (
               <div>
-                <div style={{ fontSize:13, fontWeight:600, color:'#0C447C', marginBottom:2 }}>📐 Guided capture — recommended</div>
-                <div style={{ fontSize:12, color:'#185FA5' }}>Step-by-step camera with truck stencil overlays for all 8 angles</div>
-              </div>
-              <button onClick={() => setShowGuided(true)} style={{ padding:'9px 18px', background:'#185FA5', color:'white', border:'none', borderRadius:8, fontSize:13, fontWeight:600, cursor:'pointer', flexShrink:0 }}>Start guided →</button>
-            </div>
-
-            {/* Guided capture overlay */}
-            {showGuided && (
-              <div style={{ marginBottom:16 }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                  <div style={{ fontSize:14, fontWeight:500 }}>Guided capture</div>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                  <div style={{ fontSize:15, fontWeight:500 }}>Guided capture</div>
                   <button onClick={() => setShowGuided(false)} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:13 }}>✕ Cancel</button>
                 </div>
                 <GuidedCapture onComplete={handleGuidedComplete} onCancel={() => setShowGuided(false)} />
               </div>
-            )}
-
-            {/* Mode toggle */}
-            <div style={{ display:'flex', gap:8, marginBottom:20, marginTop:12 }}>
-              <button onClick={() => { setUploadMode('video'); setFiles([]); setPreviews([]) }} style={{ flex:1, padding:'12px', borderRadius:10, border: uploadMode === 'video' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: uploadMode === 'video' ? '#E6F1FB' : 'white', cursor:'pointer', textAlign:'center' }}>
-                <div style={{ fontSize:22, marginBottom:4 }}>🎥</div>
-                <div style={{ fontSize:13, fontWeight:500, color: uploadMode === 'video' ? '#0C447C' : '#1a1a1a' }}>Video walkaround</div>
-                <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Recommended · More comprehensive</div>
-              </button>
-              <button onClick={() => { setUploadMode('photo'); setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }} style={{ flex:1, padding:'12px', borderRadius:10, border: uploadMode === 'photo' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: uploadMode === 'photo' ? '#E6F1FB' : 'white', cursor:'pointer', textAlign:'center' }}>
-                <div style={{ fontSize:22, marginBottom:4 }}>📷</div>
-                <div style={{ fontSize:13, fontWeight:500, color: uploadMode === 'photo' ? '#0C447C' : '#1a1a1a' }}>Photos</div>
-                <div style={{ fontSize:11, color:'#888', marginTop:2 }}>Upload individual photos</div>
-              </button>
-            </div>
-
-            {/* VIDEO MODE */}
-            {uploadMode === 'video' && (
+            ) : (
               <div>
-                <div style={{ fontSize:13, color:'#555', marginBottom:12, lineHeight:1.6 }}>
-                  Record a 30–60 second walkaround video of the truck covering all sides — front, rear, driver side, passenger side, and any areas of concern. The app will automatically extract frames for AI analysis.
+                <div style={{ fontSize:15, fontWeight:500, marginBottom:16 }}>How do you want to capture?</div>
+
+                {/* Option 1: Guided */}
+                <div style={{ border:'2px solid #185FA5', borderRadius:12, padding:'16px', marginBottom:10, background:'#E6F1FB', cursor:'pointer' }} onClick={() => setShowGuided(true)}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                      <div style={{ fontSize:28 }}>📐</div>
+                      <div>
+                        <div style={{ fontSize:14, fontWeight:600, color:'#0C447C' }}>Guided capture <span style={{ fontSize:11, background:'#185FA5', color:'white', padding:'2px 8px', borderRadius:10, marginLeft:4 }}>Recommended</span></div>
+                        <div style={{ fontSize:12, color:'#185FA5', marginTop:2 }}>Opens camera with truck stencil overlays · 8 guided shots</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize:18, color:'#185FA5' }}>→</div>
+                  </div>
                 </div>
 
-                {!videoFile ? (
-                  <label htmlFor="video-input" style={{ display:'block', border:'1.5px dashed rgba(0,0,0,0.2)', borderRadius:12, padding:'32px', textAlign:'center', cursor:'pointer', background:'#f9f9f8', marginBottom:14 }}>
-                    <div style={{ fontSize:36, marginBottom:8 }}>🎥</div>
-                    <div style={{ fontSize:14, fontWeight:500, marginBottom:4 }}>Tap to upload walkaround video</div>
-                    <div style={{ fontSize:12, color:'#aaa' }}>MP4, MOV, HEVC supported</div>
-                    <input id="video-input" type="file" accept="video/*" onChange={handleVideoFile} style={{ display:'none' }} />
-                  </label>
-                ) : (
-                  <div>
-                    <video ref={videoRef} src={videoUrl} controls style={{ width:'100%', borderRadius:10, marginBottom:12, background:'#000', maxHeight:280 }} />
-                    <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap' }}>
-                      <button className="btn btn-primary" onClick={extractFrames} disabled={extracting}>
-                        {extracting ? `Extracting frames... ${extractProgress}%` : extractedFrames.length > 0 ? `Re-extract frames (${extractedFrames.length} found)` : 'Extract frames for AI analysis'}
-                      </button>
-                      <button className="btn" onClick={() => { setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}>Change video</button>
+                {/* Option 2: Video */}
+                <div style={{ border: uploadMode === 'video' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', borderRadius:12, padding:'16px', marginBottom:10, background: uploadMode === 'video' ? '#f0f7ff' : 'white', cursor:'pointer' }}
+                  onClick={() => { setUploadMode('video'); setShowGuided(false) }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    <div style={{ fontSize:28 }}>🎥</div>
+                    <div>
+                      <div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Video walkaround</div>
+                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Upload a recorded video — app extracts frames automatically</div>
                     </div>
+                  </div>
+                </div>
 
-                    {extracting && (
-                      <div style={{ marginBottom:14 }}>
-                        <div style={{ height:4, background:'#eee', borderRadius:2, overflow:'hidden' }}>
-                          <div style={{ height:'100%', background:'#185FA5', borderRadius:2, width:`${extractProgress}%`, transition:'width 0.3s' }} />
-                        </div>
-                        <div style={{ fontSize:12, color:'#888', marginTop:6 }}>Extracting frames from video...</div>
-                      </div>
-                    )}
+                {/* Option 3: Photos */}
+                <div style={{ border: uploadMode === 'photo' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', borderRadius:12, padding:'16px', marginBottom:16, background: uploadMode === 'photo' ? '#f0f7ff' : 'white', cursor:'pointer' }}
+                  onClick={() => { setUploadMode('photo'); setShowGuided(false) }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    <div style={{ fontSize:28 }}>📷</div>
+                    <div>
+                      <div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Upload photos</div>
+                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Choose existing photos from your camera roll</div>
+                    </div>
+                  </div>
+                </div>
 
-                    {extractedFrames.length > 0 && (
+                {/* VIDEO upload UI */}
+                {uploadMode === 'video' && (
+                  <div style={{ marginBottom:14 }}>
+                    {!videoFile ? (
+                      <label htmlFor="video-input" style={{ display:'block', border:'1.5px dashed rgba(0,0,0,0.2)', borderRadius:12, padding:'28px', textAlign:'center', cursor:'pointer', background:'#f9f9f8' }}>
+                        <div style={{ fontSize:32, marginBottom:8 }}>🎥</div>
+                        <div style={{ fontSize:14, fontWeight:500, marginBottom:4 }}>Tap to upload walkaround video</div>
+                        <div style={{ fontSize:12, color:'#aaa' }}>MP4, MOV, HEVC supported</div>
+                        <input id="video-input" type="file" accept="video/*" onChange={handleVideoFile} style={{ display:'none' }} />
+                      </label>
+                    ) : (
                       <div>
-                        <div style={{ fontSize:12, fontWeight:500, color:'#555', marginBottom:8 }}>{extractedFrames.length} frames extracted — tap × to remove any you don't want included</div>
-                        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(110px,1fr))', gap:8, marginBottom:16 }}>
-                          {extractedFrames.map((src, i) => (
-                            <div key={i} style={{ position:'relative' }}>
-                              <img src={src} style={{ width:'100%', aspectRatio:'16/9', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)' }} />
-                              <div style={{ position:'absolute', bottom:4, left:4, background:'rgba(0,0,0,0.55)', color:'white', fontSize:10, padding:'2px 5px', borderRadius:4 }}>Frame {i+1}</div>
-                              <button onClick={() => removeFrame(i)} style={{ position:'absolute', top:4, right:4, width:20, height:20, borderRadius:'50%', background:'rgba(0,0,0,0.6)', color:'white', border:'none', cursor:'pointer', fontSize:11, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
-                            </div>
-                          ))}
+                        <video ref={videoRef} src={videoUrl} controls style={{ width:'100%', borderRadius:10, marginBottom:12, background:'#000', maxHeight:260 }} />
+                        <div style={{ display:'flex', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+                          <button className="btn btn-primary" onClick={extractFrames} disabled={extracting}>
+                            {extracting ? `Extracting... ${extractProgress}%` : extractedFrames.length > 0 ? `Re-extract frames (${extractedFrames.length})` : 'Extract frames for AI →'}
+                          </button>
+                          <button className="btn" onClick={() => { setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}>Change video</button>
                         </div>
+                        {extracting && (
+                          <div style={{ marginBottom:12 }}>
+                            <div style={{ height:4, background:'#eee', borderRadius:2, overflow:'hidden' }}>
+                              <div style={{ height:'100%', background:'#185FA5', width:`${extractProgress}%`, transition:'width 0.3s' }} />
+                            </div>
+                          </div>
+                        )}
+                        {extractedFrames.length > 0 && (
+                          <div>
+                            <div style={{ fontSize:12, color:'#555', marginBottom:8 }}>{extractedFrames.length} frames extracted — tap × to remove any</div>
+                            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px,1fr))', gap:8 }}>
+                              {extractedFrames.map((src, i) => (
+                                <div key={i} style={{ position:'relative' }}>
+                                  <img src={src} style={{ width:'100%', aspectRatio:'16/9', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)' }} />
+                                  <div style={{ position:'absolute', bottom:3, left:3, background:'rgba(0,0,0,0.55)', color:'white', fontSize:9, padding:'1px 4px', borderRadius:3 }}>Frame {i+1}</div>
+                                  <button onClick={() => removeFrame(i)} style={{ position:'absolute', top:3, right:3, width:18, height:18, borderRadius:'50%', background:'rgba(0,0,0,0.6)', color:'white', border:'none', cursor:'pointer', fontSize:10, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* PHOTO MODE */}
-            {uploadMode === 'photo' && (
-              <div>
-                <div style={{ fontSize:13, color:'#555', marginBottom:12 }}>Cover all sides of the truck: front, rear, driver side, passenger side, and any areas of concern.</div>
-                <label htmlFor="photo-input" style={{ display:'block', border:'1.5px dashed rgba(0,0,0,0.2)', borderRadius:12, padding:'32px', textAlign:'center', cursor:'pointer', background:'#f9f9f8', marginBottom:14 }}>
-                  <div style={{ fontSize:32, marginBottom:8, color:'#aaa' }}>⬆</div>
-                  <div style={{ fontSize:14, fontWeight:500, marginBottom:4 }}>Tap to upload photos</div>
-                  <div style={{ fontSize:12, color:'#aaa' }}>JPG, PNG, HEIC · Multiple files OK</div>
-                  <input id="photo-input" type="file" accept="image/*" multiple onChange={handlePhotoFiles} style={{ display:'none' }} />
-                </label>
-                {previews.length > 0 && (
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px,1fr))', gap:8, marginBottom:16 }}>
-                    {previews.map((src, i) => (
-                      <div key={i} style={{ position:'relative' }}>
-                        <img src={src} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)' }} />
-                        <button onClick={() => removePhoto(i)} style={{ position:'absolute', top:4, right:4, width:20, height:20, borderRadius:'50%', background:'rgba(0,0,0,0.6)', color:'white', border:'none', cursor:'pointer', fontSize:11, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+                {/* PHOTO upload UI */}
+                {uploadMode === 'photo' && (
+                  <div style={{ marginBottom:14 }}>
+                    <label htmlFor="photo-input" style={{ display:'block', border:'1.5px dashed rgba(0,0,0,0.2)', borderRadius:12, padding:'28px', textAlign:'center', cursor:'pointer', background:'#f9f9f8', marginBottom:10 }}>
+                      <div style={{ fontSize:32, marginBottom:8, color:'#aaa' }}>⬆</div>
+                      <div style={{ fontSize:14, fontWeight:500, marginBottom:4 }}>Tap to choose photos</div>
+                      <div style={{ fontSize:12, color:'#aaa' }}>JPG, PNG, HEIC · Multiple OK</div>
+                      <input id="photo-input" type="file" accept="image/*" multiple onChange={handlePhotoFiles} style={{ display:'none' }} />
+                    </label>
+                    {previews.length > 0 && (
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px,1fr))', gap:8 }}>
+                        {previews.map((src, i) => (
+                          <div key={i} style={{ position:'relative' }}>
+                            <img src={src} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)' }} />
+                            <button onClick={() => removePhoto(i)} style={{ position:'absolute', top:3, right:3, width:18, height:18, borderRadius:'50%', background:'rgba(0,0,0,0.6)', color:'white', border:'none', cursor:'pointer', fontSize:10, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
-              </div>
-            )}
 
-            {error && <div style={{ color:'#A32D2D', fontSize:13, marginBottom:12 }}>{error}</div>}
+                {error && <div style={{ color:'#A32D2D', fontSize:13, marginBottom:12 }}>{error}</div>}
 
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              <button className="btn" onClick={() => setStep(1)}>← Back</button>
-              <button className="btn btn-primary" onClick={runAnalysis} disabled={analyzing || !readyToAnalyze}>
-                {analyzing ? 'Analyzing...' : readyToAnalyze ? `Analyze ${sourceFrames.length} frame${sourceFrames.length > 1 ? 's' : ''} with AI →` : uploadMode === 'video' ? 'Extract frames first' : 'Upload photos first'}
-              </button>
-            </div>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:4 }}>
+                  <button className="btn" onClick={() => setStep(1)}>← Back</button>
+                  <button className="btn btn-primary" onClick={runAnalysis} disabled={analyzing || !readyToAnalyze}>
+                    {analyzing ? 'Analyzing...' : readyToAnalyze ? `Analyze ${sourceFrames.length} frame${sourceFrames.length > 1 ? 's' : ''} with AI →` : 'Select capture method above'}
+                  </button>
+                </div>
 
-            {analyzing && (
-              <div style={{ textAlign:'center', padding:'32px', marginTop:16 }}>
-                <div style={{ width:32, height:32, border:'2px solid #ddd', borderTopColor:'#185FA5', borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto 12px' }} />
-                <div style={{ fontSize:13, color:'#888' }}>{analyzeStatus || 'Analyzing with AI vision...'}</div>
+                {analyzing && (
+                  <div style={{ textAlign:'center', padding:'32px', marginTop:16 }}>
+                    <div style={{ width:32, height:32, border:'2px solid #ddd', borderTopColor:'#185FA5', borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto 12px' }} />
+                    <div style={{ fontSize:13, color:'#888' }}>{analyzeStatus || 'Analyzing with AI vision...'}</div>
+                  </div>
+                )}
               </div>
             )}
           </div>
