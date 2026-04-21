@@ -8,7 +8,7 @@ export default function FleetPage() {
   const [trucks, setTrucks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState({ truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'' })
+  const [form, setForm] = useState({ truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'' })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { loadTrucks() }, [])
@@ -27,7 +27,7 @@ export default function FleetPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     await supabase.from('trucks').insert({ ...form, year: parseInt(form.year) || 0, user_id: user.id })
-    setForm({ truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'' })
+    setForm({ truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'' })
     setShowAdd(false)
     setSaving(false)
     loadTrucks()
@@ -79,6 +79,7 @@ export default function FleetPage() {
                 <div><label>Model</label><input value={form.model} onChange={e => setForm({...form, model:e.target.value})} placeholder="e.g. Cascadia" /></div>
                 <div><label>Year</label><input value={form.year} onChange={e => setForm({...form, year:e.target.value})} placeholder="e.g. 2021" type="number" /></div>
                 <div><label>License plate</label><input value={form.license_plate} onChange={e => setForm({...form, license_plate:e.target.value})} placeholder="e.g. ABC-1234" /></div>
+                <div><label>VIN</label><input value={form.vin} onChange={e => setForm({...form, vin:e.target.value.toUpperCase()})} placeholder="17-character VIN" maxLength={17} style={{textTransform:'uppercase'}} /></div>
               </div>
               <div style={{ display:'flex', gap:8 }}>
                 <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save truck'}</button>
@@ -113,7 +114,8 @@ export default function FleetPage() {
                 {(truck.make || truck.model) && (
                   <div style={{ fontSize:12, color:'#888', marginBottom:6 }}>{[truck.year, truck.make, truck.model].filter(Boolean).join(' ')}</div>
                 )}
-                {truck.license_plate && <div style={{ fontSize:12, color:'#888', marginBottom:8 }}>Plate: {truck.license_plate}</div>}
+                {truck.license_plate && <div style={{ fontSize:12, color:'#888', marginBottom:4 }}>Plate: {truck.license_plate}</div>}
+                {truck.vin && <div style={{ fontSize:12, color:'#888', marginBottom:8, fontFamily:'monospace' }}>VIN: {truck.vin}</div>}
                 <div style={{ fontSize:12, color:'#aaa', marginBottom:12 }}>
                   {last ? `Last inspected: ${new Date(last.created_at).toLocaleDateString()}` : 'No inspections yet'}
                 </div>
