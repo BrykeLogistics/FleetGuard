@@ -450,8 +450,8 @@ function InspectContent() {
                     {/* Sub-mode: live recording */}
                     {videoSubMode === 'record' && (
                       <div>
-                        <div style={{ position:'relative', background:'#000', borderRadius:12, overflow:'hidden', aspectRatio:'16/9', marginBottom:12 }}>
-                          <video ref={recordingRef} autoPlay playsInline muted style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                        <div style={{ position:'relative', background:'#000', borderRadius:12, overflow:'hidden', marginBottom:12, minHeight:220 }}>
+                          <video ref={recordingRef} autoPlay playsInline muted style={{ width:'100%', maxHeight:280, objectFit:'cover', display:'block' }} />
                           {isRecording && (
                             <div style={{ position:'absolute', top:12, left:12, display:'flex', alignItems:'center', gap:6, background:'rgba(0,0,0,0.6)', padding:'5px 12px', borderRadius:20 }}>
                               <div style={{ width:8, height:8, borderRadius:'50%', background:'#E24B4A', animation:'pulse 1s infinite' }} />
@@ -467,13 +467,13 @@ function InspectContent() {
                           )}
                         </div>
                         <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }`}</style>
-                        <div style={{ display:'flex', gap:8 }}>
+                        <div style={{ display:'flex', gap:8, marginTop:8 }}>
                           {isRecording ? (
-                            <button onClick={stopRecording} style={{ flex:1, padding:'12px', background:'#E24B4A', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>
-                              ⏹ Stop recording
+                            <button onClick={stopRecording} style={{ flex:1, padding:'14px', background:'#E24B4A', color:'white', border:'none', borderRadius:10, fontSize:15, fontWeight:700, cursor:'pointer' }}>
+                              ⏹ Stop recording — {formatTime(recordingSeconds)}
                             </button>
                           ) : (
-                            <button onClick={startRecording} style={{ flex:1, padding:'12px', background:'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>
+                            <button onClick={startRecording} style={{ flex:1, padding:'14px', background:'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:15, fontWeight:700, cursor:'pointer' }}>
                               🔴 Start recording
                             </button>
                           )}
