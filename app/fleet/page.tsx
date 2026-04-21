@@ -69,37 +69,54 @@ export default function FleetPage() {
       const bodyClass = get('Body Class') || ''
       const gvwr = get('Gross Vehicle Weight Rating From') || ''
 
-      // Detect vehicle type from NHTSA data
+      // Detect vehicle type using multiple signals
       let vehicle_type = ''
       const body = bodyClass.toLowerCase()
       const makeL = make.toLowerCase()
       const modelL = model.toLowerCase()
       const mfr = get('Manufacturer Name').toLowerCase()
+      const trim = get('Trim').toLowerCase()
+      const series = get('Series').toLowerCase()
+      const vinUpper = vin.toUpperCase()
+      const wmi = vinUpper.slice(0, 3)
+      const vds = vinUpper.slice(3, 8) // positions 4-8 encode body/chassis
       const gvwrNum = parseInt(gvwr.replace(/[^0-9]/g, '')) || 0
 
-      // Step van detection — check manufacturer, model series, and body class
-      // Known step van / walk-in van manufacturers and models
-      const stepVanMakers = ['utilimaster', 'grumman', 'olson', 'morgan', 'hackney', 'supreme', 'spartan']
-      const stepVanModels = ['p700', 'p800', 'p900', 'p1000', 'p1100', 'p1200', 'p-700', 'p-800', 'p-900', 'p-1000', 'p-1100', 'p-1200', 'step van', 'stepvan', 'walk-in', 'walk in', 'workhorse', 'mt45', 'mt55', 'w42', 'w62']
-      const isStepVanMaker = stepVanMakers.some(m => mfr.includes(m) || makeL.includes(m))
-      const isStepVanModel = stepVanModels.some(m => modelL.includes(m))
-      const isStepVanBody = body.includes('step van') || body.includes('walk-in') || body.includes('walk in') || body.includes('delivery van')
+      // ── Step van WMI codes (Ford P-series incomplete chassis) ──
+      // 1F6 = Ford incomplete vehicle (P-series step van chassis)
+      // 5F6 = Ford incomplete (Mexico plant)
+      const stepVanWMI = ['1F6', '5F6', '1GW', '1GX', '5GW']
 
-      // Sprinter / cargo van models (Mercedes, Ford Transit, Ram ProMaster, etc.)
-      const sprinterModels = ['sprinter', 'transit', 'promaster', 'nv cargo', 'express', 'savana', 'econoline', 'e-series', 'e350', 'e450']
-      const isSprinterModel = sprinterModels.some(m => modelL.includes(m))
+      // ── Step van VDS patterns ──
+      // Ford P-series: positions 4-8 contain P7, P8, P9, P10, P11, P12
+      const isStepVanVDS = /[A-Z][0-9]?[5-9]|P[0-9]/.test(vds) && wmi.startsWith('1F6')
+
+      // ── Known step van keywords ──
+      const stepVanKeywords = ['p700', 'p800', 'p900', 'p1000', 'p1100', 'p1200',
+        'step van', 'stepvan', 'walk-in', 'walk in', 'mt45', 'mt55', 'mt35',
+        'workhorse', 'p-series', 'utilimaster', 'grumman', 'olson', 'hackney']
+      const allText = `${body} ${modelL} ${mfr} ${trim} ${series}`
+      const isStepVanKeyword = stepVanKeywords.some(k => allText.includes(k))
+
+      // ── Sprinter / cargo van ──
+      const sprinterKeywords = ['sprinter', 'transit connect', 'transit', 'promaster', 
+        'nv cargo', 'nv200', 'express cargo', 'savana cargo', 'econoline cargo']
+      const isSprinterKeyword = sprinterKeywords.some(k => allText.includes(k))
       const isSprinterBody = body.includes('cargo van') || body.includes('passenger van')
+      const sprinterWMI = ['WDB', 'WD4'] // Mercedes WMI codes
 
-      // Box truck — separate cab, longer chassis
-      const boxTruckModels = ['m2', 'npr', 'npr-hd', 'nqr', 'ftr', 'fvr', 'f650', 'f750', 'c7500', 'c6500', 'tiltmaster']
-      const isBoxTruckModel = boxTruckModels.some(m => modelL.includes(m))
+      // ── Box truck ──
+      const boxTruckKeywords = ['m2', 'npr', 'nqr', 'ftr', 'fvr', 'f650', 'f750',
+        'c7500', 'c6500', 'box truck', 'straight truck', 'cab-over', 'cabover', 'low cab']
+      const isBoxTruckKeyword = boxTruckKeywords.some(k => allText.includes(k))
       const isBoxTruckBody = body.includes('straight') || body.includes('box truck') || body.includes('cab-over')
 
-      if (isStepVanMaker || isStepVanModel || isStepVanBody) {
+      // ── Priority detection order ──
+      if (stepVanWMI.includes(wmi) || isStepVanVDS || isStepVanKeyword) {
         vehicle_type = 'stepvan'
-      } else if (isSprinterModel || (isSprinterBody && gvwrNum < 14000)) {
+      } else if (sprinterWMI.some(w => wmi.startsWith(w)) || isSprinterKeyword || (isSprinterBody && gvwrNum < 14000)) {
         vehicle_type = 'sprinter'
-      } else if (isBoxTruckModel || isBoxTruckBody || gvwrNum >= 26000) {
+      } else if (isBoxTruckKeyword || isBoxTruckBody || gvwrNum >= 26000) {
         vehicle_type = 'boxtruck'
       } else if (body.includes('van') && gvwrNum < 14000) {
         vehicle_type = 'sprinter'
@@ -117,8 +134,9 @@ export default function FleetPage() {
           year: year !== 'Not Applicable' ? year : prev.year,
           vehicle_type: vehicle_type || prev.vehicle_type,
         }))
-        const typeLabel = vehicle_type === 'sprinter' ? 'Sprinter/Cargo Van' : vehicle_type === 'stepvan' ? 'Step Van' : vehicle_type === 'boxtruck' ? 'Box Truck' : ''
-        setVinMessage(`✓ Found: ${year} ${make} ${model}${typeLabel ? ` · ${typeLabel}` : ''} — review and confirm below`)
+        const typeLabel = vehicle_type === 'sprinter' ? 'Sprinter/Cargo Van' : vehicle_type === 'stepvan' ? 'Step Van' : vehicle_type === 'boxtruck' ? 'Box Truck' : 'Unknown — please select manually'
+        const debugInfo = ` [Body: "${bodyClass}" | Mfr: "${get('Manufacturer Name')}" | GVWR: "${gvwr}"]`
+        setVinMessage(`✓ Found: ${year} ${make} ${model} · ${typeLabel}${debugInfo}`)
       } else {
         setVinMessage('VIN not found — please fill in details manually')
       }
