@@ -130,6 +130,7 @@ export default function GuidedCapture({ onComplete, onCancel }: Props) {
   const [mode, setMode] = useState<'intro'|'camera'|'review'>('intro')
   const [countdown, setCountdown] = useState<number|null>(null)
   const [cameraError, setCameraError] = useState('')
+  const [videoPlaying, setVideoPlaying] = useState(false)
   const [lastDataUrl, setLastDataUrl] = useState('')
   const streamRef = useRef<MediaStream|null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -148,10 +149,37 @@ export default function GuidedCapture({ onComplete, onCancel }: Props) {
   // Attach stream to video whenever we enter camera mode
   useEffect(() => {
     if (mode === 'camera' && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current
-      videoRef.current.play().catch(() => {})
+      attachAndPlay(videoRef.current)
     }
   }, [mode])
+
+  // iOS Safari requires play() to be called after setting srcObject
+  // Use a ref callback so it fires when the element actually mounts in the DOM
+  const videoCallbackRef = useCallback((el: HTMLVideoElement | null) => {
+    if (el && streamRef.current) {
+      (videoRef as any).current = el
+      attachAndPlay(el)
+    }
+  }, [])
+
+  function attachAndPlay(el: HTMLVideoElement) {
+    if (!streamRef.current) return
+    el.srcObject = streamRef.current
+    el.setAttribute('playsinline', 'true')
+    el.setAttribute('muted', 'true')
+    el.muted = true
+    setVideoPlaying(false)
+    const playPromise = el.play()
+    if (playPromise !== undefined) {
+      playPromise.then(() => setVideoPlaying(true)).catch(() => setVideoPlaying(false))
+    }
+  }
+
+  function tapToStart() {
+    if (videoRef.current) {
+      videoRef.current.play().then(() => setVideoPlaying(true)).catch(() => {})
+    }
+  }
 
   async function requestCamera() {
     setCameraError('')
@@ -235,7 +263,7 @@ export default function GuidedCapture({ onComplete, onCancel }: Props) {
       {/* CAMERA MODE */}
       {mode === 'camera' && !cameraError && (
         <div style={{ position:'relative', width:'100%', aspectRatio:'4/3' }}>
-          <video ref={videoRef} autoPlay playsInline muted style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+          <video ref={videoCallbackRef} autoPlay playsInline muted style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} onPlaying={() => setVideoPlaying(true)} />
 
           {/* Stencil overlay */}
           <svg width="100%" height="100%" viewBox={stencil.viewBox} preserveAspectRatio="xMidYMid meet"
@@ -245,6 +273,15 @@ export default function GuidedCapture({ onComplete, onCancel }: Props) {
 
           {/* Vignette */}
           <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.45) 100%)', pointerEvents:'none' }} />
+
+          {/* iOS tap to start overlay */}
+          {!videoPlaying && (
+            <div onClick={tapToStart} style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.7)', cursor:'pointer', zIndex:10 }}>
+              <div style={{ fontSize:48, marginBottom:12 }}>📷</div>
+              <div style={{ fontSize:16, fontWeight:600, color:'white', marginBottom:6 }}>Tap to start camera</div>
+              <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)' }}>Tap anywhere to activate</div>
+            </div>
+          )}
 
           {/* Shot label + progress */}
           <div style={{ position:'absolute', top:12, left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
