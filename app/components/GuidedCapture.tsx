@@ -2,14 +2,14 @@
 import { useRef, useState, useEffect } from 'react'
 
 const SHOTS = [
-  { id: 'front',        label: 'Front',              icon: '⬆', desc: 'Stand 15–20 ft away, centered on the front' },
-  { id: 'rear',         label: 'Rear',               icon: '⬇', desc: 'Stand 15–20 ft away, centered on the rear' },
-  { id: 'driver',       label: 'Driver side',        icon: '⬅', desc: 'Stand back far enough to see the full length' },
-  { id: 'passenger',    label: 'Passenger side',     icon: '➡', desc: 'Stand back far enough to see the full length' },
-  { id: 'front-left',   label: 'Front-left corner',  icon: '↖', desc: '45° angle from the front-left corner' },
-  { id: 'front-right',  label: 'Front-right corner', icon: '↗', desc: '45° angle from the front-right corner' },
-  { id: 'rear-left',    label: 'Rear-left corner',   icon: '↙', desc: '45° angle from the rear-left corner' },
-  { id: 'rear-right',   label: 'Rear-right corner',  icon: '↘', desc: '45° angle from the rear-right corner' },
+  { id: 'front',        label: 'Front',                      icon: '⬆', desc: 'Stand 10–15 ft away, centered on the front grille' },
+  { id: 'front-left',   label: 'Driver side front corner',   icon: '↖', desc: 'Stand 10–15 ft away at a 45° angle from the driver side front corner' },
+  { id: 'driver',       label: 'Driver side',                icon: '⬅', desc: 'Stand 10–15 ft away, walk along the full length of the driver side' },
+  { id: 'rear-left',    label: 'Driver side rear corner',    icon: '↙', desc: 'Stand 10–15 ft away at a 45° angle from the driver side rear corner' },
+  { id: 'rear',         label: 'Rear',                       icon: '⬇', desc: 'Stand 10–15 ft away, centered on the rear doors' },
+  { id: 'rear-right',   label: 'Passenger side rear corner', icon: '↘', desc: 'Stand 10–15 ft away at a 45° angle from the passenger side rear corner' },
+  { id: 'passenger',    label: 'Passenger side',             icon: '➡', desc: 'Stand 10–15 ft away, walk along the full length of the passenger side' },
+  { id: 'front-right',  label: 'Passenger side front corner',icon: '↗', desc: 'Stand 10–15 ft away at a 45° angle from the passenger side front corner' },
 ]
 
 type StencilPath = { d: string; style?: any }
@@ -18,255 +18,255 @@ type StencilSet = Record<string, StencilDef>
 
 // ── SPRINTER VAN stencils ──────────────────────────────────────────
 const STENCILS_SPRINTER: StencilSet = {
-  front: { viewBox:'0 0 400 300', paths:[
-    { d:'M100 80 L300 80 L310 240 L90 240 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M115 90 L285 90 L285 160 L115 160 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.6)', strokeWidth:1.5, strokeDasharray:'6 4' } },
-    { d:'M102 185 L148 185 L148 210 L102 210 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
-    { d:'M252 185 L298 185 L298 210 L252 210 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
-    { d:'M115 165 L285 165 L285 175 L115 175 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1 } },
-    { d:'M110 228 A22 22 0 1 1 110.1 228 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M290 228 A22 22 0 1 1 290.1 228 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+  front: { viewBox:'0 0 620 465', paths:[
+    { d:'M 210 162 L 410 162 L 420 322 L 200 322 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 225 172 L 395 172 L 395 242 L 225 242 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.6)', strokeWidth:1.5, strokeDasharray:'6 4' } },
+    { d:'M 212 267 L 258 267 L 258 292 L 212 292 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
+    { d:'M 362 267 L 408 267 L 408 292 L 362 292 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
+    { d:'M 225 247 L 395 247 L 395 257 L 225 257 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1 } },
+    { d:'M 220 310 A 22 22 0 1 1 220 310 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 400 310 A 22 22 0 1 1 400 310 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
   ]},
-  rear: { viewBox:'0 0 400 300', paths:[
-    { d:'M90 70 L310 70 L310 240 L90 240 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M95 75 L200 75 L200 235 L95 235 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
-    { d:'M205 75 L305 75 L305 235 L205 235 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
-    { d:'M200 75 L200 235', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
-    { d:'M165 148 L182 148 L182 158 L165 158 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
-    { d:'M218 148 L235 148 L235 158 L218 158 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
-    { d:'M92 78 L108 78 L108 118 L92 118 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.2, strokeDasharray:'4 3' } },
-    { d:'M292 78 L308 78 L308 118 L292 118 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.2, strokeDasharray:'4 3' } },
-    { d:'M110 228 A22 22 0 1 1 110.1 228 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M290 228 A22 22 0 1 1 290.1 228 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+  rear: { viewBox:'0 0 620 465', paths:[
+    { d:'M 200 152 L 420 152 L 420 322 L 200 322 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 205 157 L 310 157 L 310 317 L 205 317 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
+    { d:'M 315 157 L 415 157 L 415 317 L 315 317 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
+    { d:'M 310 157 L 310 317', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
+    { d:'M 275 230 L 292 230 L 292 240 L 275 240 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
+    { d:'M 328 230 L 345 230 L 345 240 L 328 240 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
+    { d:'M 202 160 L 218 160 L 218 200 L 202 200 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.2, strokeDasharray:'4 3' } },
+    { d:'M 402 160 L 418 160 L 418 200 L 402 200 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.2, strokeDasharray:'4 3' } },
+    { d:'M 220 310 A 22 22 0 1 1 220 310 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 400 310 A 22 22 0 1 1 400 310 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
   ]},
-  driver: { viewBox:'0 0 400 300', paths:[
-    { d:'M20 80 L380 80 L380 250 L20 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M20 80 L120 80 L120 250 L20 250 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M26 88 L114 88 L114 165 L26 165 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.55)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M120 80 L380 80 L380 250 L120 250 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M155 160 L230 160 L230 230 L155 230 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 3' } },
-    { d:'M60 238 A26 26 0 1 1 60.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M320 238 A26 26 0 1 1 320.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M14 108 L26 108 L26 128 L14 128 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.2 } },
+  driver: { viewBox:'0 0 620 465', paths:[
+    { d:'M 130 162 L 490 162 L 490 332 L 130 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 130 162 L 230 162 L 230 332 L 130 332 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 136 170 L 224 170 L 224 247 L 136 247 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.55)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 230 162 L 490 162 L 490 332 L 230 332 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 265 242 L 340 242 L 340 312 L 265 312 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 3' } },
+    { d:'M 170 320 A 26 26 0 1 1 170 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 430 320 A 26 26 0 1 1 430 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 124 190 L 136 190 L 136 210 L 124 210 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.2 } },
   ]},
-  passenger: { viewBox:'0 0 400 300', paths:[
-    { d:'M20 80 L380 80 L380 250 L20 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M280 80 L380 80 L380 250 L280 250 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M286 88 L374 88 L374 165 L286 165 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.55)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M20 80 L280 80 L280 250 L20 250 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M155 160 L230 160 L230 230 L155 230 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 3' } },
-    { d:'M80 238 A26 26 0 1 1 80.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M340 238 A26 26 0 1 1 340.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M374 108 L386 108 L386 128 L374 128 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.2 } },
+  passenger: { viewBox:'0 0 620 465', paths:[
+    { d:'M 130 162 L 490 162 L 490 332 L 130 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 390 162 L 490 162 L 490 332 L 390 332 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 396 170 L 484 170 L 484 247 L 396 247 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.55)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 130 162 L 390 162 L 390 332 L 130 332 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 265 242 L 340 242 L 340 312 L 265 312 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 3' } },
+    { d:'M 190 320 A 26 26 0 1 1 190 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 450 320 A 26 26 0 1 1 450 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 484 190 L 496 190 L 496 210 L 484 210 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.2 } },
   ]},
-  'front-left': { viewBox:'0 0 400 300', paths:[
-    { d:'M60 75 L310 75 L345 110 L345 250 L60 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M60 75 L170 75 L170 250 L60 250 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M65 83 L162 83 L162 160 L65 160 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M170 75 L310 75 L345 110 L345 250 L170 250 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.25)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M100 238 A24 24 0 1 1 100.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M300 238 A24 24 0 1 1 300.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M52 105 L66 105 L66 125 L52 125 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'front-left': { viewBox:'0 0 620 465', paths:[
+    { d:'M 170 157 L 420 157 L 455 192 L 455 332 L 170 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 170 157 L 280 157 L 280 332 L 170 332 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 175 165 L 272 165 L 272 242 L 175 242 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 280 157 L 420 157 L 455 192 L 455 332 L 280 332 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.25)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 210 320 A 24 24 0 1 1 210 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 410 320 A 24 24 0 1 1 410 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 162 187 L 176 187 L 176 207 L 162 207 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'front-right': { viewBox:'0 0 400 300', paths:[
-    { d:'M55 110 L90 75 L340 75 L340 250 L55 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M230 75 L340 75 L340 250 L230 250 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M238 83 L335 83 L335 160 L238 160 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M55 110 L230 75 L230 250 L55 250 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.25)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M100 238 A24 24 0 1 1 100.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M300 238 A24 24 0 1 1 300.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M334 105 L348 105 L348 125 L334 125 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'front-right': { viewBox:'0 0 620 465', paths:[
+    { d:'M 165 192 L 200 157 L 450 157 L 450 332 L 165 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 340 157 L 450 157 L 450 332 L 340 332 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 348 165 L 445 165 L 445 242 L 348 242 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 165 192 L 340 157 L 340 332 L 165 332 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.25)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 210 320 A 24 24 0 1 1 210 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 410 320 A 24 24 0 1 1 410 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 444 187 L 458 187 L 458 207 L 444 207 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'rear-left': { viewBox:'0 0 400 300', paths:[
-    { d:'M55 75 L345 75 L345 110 L290 250 L55 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M285 75 L345 75 L345 110 L285 250 L225 250 L225 75 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
-    { d:'M55 75 L225 75 L225 250 L55 250 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M90 238 A24 24 0 1 1 90.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M285 238 A24 24 0 1 1 285.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M272 80 L284 80 L284 118 L272 118 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'rear-left': { viewBox:'0 0 620 465', paths:[
+    { d:'M 165 157 L 455 157 L 455 192 L 400 332 L 165 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 395 157 L 455 157 L 455 192 L 395 332 L 335 332 L 335 157 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
+    { d:'M 165 157 L 335 157 L 335 332 L 165 332 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 200 320 A 24 24 0 1 1 200 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 395 320 A 24 24 0 1 1 395 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 382 162 L 394 162 L 394 200 L 382 200 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'rear-right': { viewBox:'0 0 400 300', paths:[
-    { d:'M55 110 L110 75 L345 75 L345 250 L55 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M55 110 L115 75 L175 75 L175 250 L55 250 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
-    { d:'M175 75 L345 75 L345 250 L175 250 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M115 238 A24 24 0 1 1 115.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M310 238 A24 24 0 1 1 310.1 238 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M116 80 L128 80 L128 118 L116 118 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'rear-right': { viewBox:'0 0 620 465', paths:[
+    { d:'M 165 192 L 220 157 L 455 157 L 455 332 L 165 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 165 192 L 225 157 L 285 157 L 285 332 L 165 332 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
+    { d:'M 285 157 L 455 157 L 455 332 L 285 332 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 225 320 A 24 24 0 1 1 225 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 420 320 A 24 24 0 1 1 420 320 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 226 162 L 238 162 L 238 200 L 226 200 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
 }
 
 // ── STEP VAN stencils ──────────────────────────────────────────────
 const STENCILS_STEPVAN: StencilSet = {
-  front: { viewBox:'0 0 400 300', paths:[
-    { d:'M60 55 L340 55 L340 250 L60 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M75 65 L325 65 L325 155 L75 155 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.6)', strokeWidth:1.5, strokeDasharray:'6 4' } },
-    { d:'M68 168 L130 168 L130 205 L68 205 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
-    { d:'M270 168 L332 168 L332 205 L270 205 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
-    { d:'M60 218 L340 218 L340 235 L60 235 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1 } },
-    { d:'M88 242 A22 22 0 1 1 88.1 242 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M312 242 A22 22 0 1 1 312.1 242 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M155 200 L245 200 L245 230 L155 230 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1, strokeDasharray:'4 3' } },
+  front: { viewBox:'0 0 620 465', paths:[
+    { d:'M 170 137 L 450 137 L 450 332 L 170 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 185 147 L 435 147 L 435 237 L 185 237 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.6)', strokeWidth:1.5, strokeDasharray:'6 4' } },
+    { d:'M 178 250 L 240 250 L 240 287 L 178 287 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
+    { d:'M 380 250 L 442 250 L 442 287 L 380 287 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
+    { d:'M 170 300 L 450 300 L 450 317 L 170 317 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1 } },
+    { d:'M 198 324 A 22 22 0 1 1 198 324 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 422 324 A 22 22 0 1 1 422 324 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 265 282 L 355 282 L 355 312 L 265 312 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1, strokeDasharray:'4 3' } },
   ]},
-  rear: { viewBox:'0 0 400 300', paths:[
-    { d:'M55 45 L345 45 L345 260 L55 260 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M60 50 L198 50 L198 255 L60 255 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
-    { d:'M202 50 L340 50 L340 255 L202 255 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
-    { d:'M200 50 L200 255', style:{ fill:'none', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.5, strokeDasharray:'4 3' } },
-    { d:'M162 150 L182 150 L182 162 L162 162 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
-    { d:'M218 150 L238 150 L238 162 L218 162 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
-    { d:'M57 52 L78 52 L78 108 L57 108 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M322 52 L343 52 L343 108 L322 108 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M55 248 L345 248 L345 262 L55 262 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1 } },
-    { d:'M82 268 A20 20 0 1 1 82.1 268 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M318 268 A20 20 0 1 1 318.1 268 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+  rear: { viewBox:'0 0 620 465', paths:[
+    { d:'M 165 127 L 455 127 L 455 342 L 165 342 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 170 132 L 308 132 L 308 337 L 170 337 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
+    { d:'M 312 132 L 450 132 L 450 337 L 312 337 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
+    { d:'M 310 132 L 310 337', style:{ fill:'none', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.5, strokeDasharray:'4 3' } },
+    { d:'M 272 232 L 292 232 L 292 244 L 272 244 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
+    { d:'M 328 232 L 348 232 L 348 244 L 328 244 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
+    { d:'M 167 134 L 188 134 L 188 190 L 167 190 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 432 134 L 453 134 L 453 190 L 432 190 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 165 330 L 455 330 L 455 344 L 165 344 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1 } },
+    { d:'M 192 350 A 20 20 0 1 1 192 350 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 428 350 A 20 20 0 1 1 428 350 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
   ]},
-  driver: { viewBox:'0 0 400 300', paths:[
-    { d:'M15 55 L385 55 L385 260 L15 260 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M15 55 L100 55 L100 260 L15 260 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M20 62 L95 62 L95 155 L20 155 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M20 158 L95 158 L95 230 L20 230 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
-    { d:'M55 192 L85 192 L85 202 L55 202 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
-    { d:'M100 55 L385 55 L385 260 L100 260 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.25)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M60 250 A34 34 0 1 1 60.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M305 250 A34 34 0 1 1 305.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M322 250 A28 28 0 1 1 322.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.4)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M8 92 L20 92 L20 115 L8 115 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  driver: { viewBox:'0 0 620 465', paths:[
+    { d:'M 125 137 L 495 137 L 495 342 L 125 342 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 125 137 L 210 137 L 210 342 L 125 342 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 130 144 L 205 144 L 205 237 L 130 237 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 130 240 L 205 240 L 205 312 L 130 312 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
+    { d:'M 165 274 L 195 274 L 195 284 L 165 284 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
+    { d:'M 210 137 L 495 137 L 495 342 L 210 342 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.25)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 170 332 A 34 34 0 1 1 170 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 415 332 A 34 34 0 1 1 415 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 432 332 A 28 28 0 1 1 432 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.4)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 118 174 L 130 174 L 130 197 L 118 197 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  passenger: { viewBox:'0 0 400 300', paths:[
-    { d:'M15 55 L385 55 L385 260 L15 260 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M300 55 L385 55 L385 260 L300 260 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M305 62 L380 62 L380 155 L305 155 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M305 158 L380 158 L380 230 L305 230 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
-    { d:'M315 192 L345 192 L345 202 L315 202 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
-    { d:'M15 55 L300 55 L300 260 L15 260 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.25)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M95 250 A34 34 0 1 1 95.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M338 250 A34 34 0 1 1 338.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M355 250 A28 28 0 1 1 355.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.4)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M380 92 L392 92 L392 115 L380 115 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  passenger: { viewBox:'0 0 620 465', paths:[
+    { d:'M 125 137 L 495 137 L 495 342 L 125 342 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 410 137 L 495 137 L 495 342 L 410 342 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 415 144 L 490 144 L 490 237 L 415 237 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 415 240 L 490 240 L 490 312 L 415 312 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
+    { d:'M 425 274 L 455 274 L 455 284 L 425 284 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
+    { d:'M 125 137 L 410 137 L 410 342 L 125 342 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.25)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 205 332 A 34 34 0 1 1 205 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 448 332 A 34 34 0 1 1 448 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 465 332 A 28 28 0 1 1 465 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.4)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 490 174 L 502 174 L 502 197 L 490 197 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'front-left': { viewBox:'0 0 400 300', paths:[
-    { d:'M50 50 L320 50 L360 90 L360 260 L50 260 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M50 50 L160 50 L160 260 L50 260 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M55 58 L154 58 L154 155 L55 155 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M160 50 L320 50 L360 90 L360 260 L160 260 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.22)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M90 250 A30 30 0 1 1 90.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M310 250 A30 30 0 1 1 310.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M42 88 L56 88 L56 110 L42 110 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'front-left': { viewBox:'0 0 620 465', paths:[
+    { d:'M 160 132 L 430 132 L 470 172 L 470 342 L 160 342 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 160 132 L 270 132 L 270 342 L 160 342 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 165 140 L 264 140 L 264 237 L 165 237 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 270 132 L 430 132 L 470 172 L 470 342 L 270 342 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.22)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 200 332 A 30 30 0 1 1 200 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 420 332 A 30 30 0 1 1 420 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 152 170 L 166 170 L 166 192 L 152 192 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'front-right': { viewBox:'0 0 400 300', paths:[
-    { d:'M40 90 L80 50 L350 50 L350 260 L40 260 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M240 50 L350 50 L350 260 L240 260 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M246 58 L345 58 L345 155 L246 155 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M40 90 L240 50 L240 260 L40 260 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.22)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M90 250 A30 30 0 1 1 90.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M310 250 A30 30 0 1 1 310.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M344 88 L358 88 L358 110 L344 110 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'front-right': { viewBox:'0 0 620 465', paths:[
+    { d:'M 150 172 L 190 132 L 460 132 L 460 342 L 150 342 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 350 132 L 460 132 L 460 342 L 350 342 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 356 140 L 455 140 L 455 237 L 356 237 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 150 172 L 350 132 L 350 342 L 150 342 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.22)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 200 332 A 30 30 0 1 1 200 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 420 332 A 30 30 0 1 1 420 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 454 170 L 468 170 L 468 192 L 454 192 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'rear-left': { viewBox:'0 0 400 300', paths:[
-    { d:'M45 50 L355 50 L355 95 L295 260 L45 260 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M290 50 L355 50 L355 95 L290 260 L230 260 L230 50 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.38)', strokeWidth:1.2, strokeDasharray:'5 4' } },
-    { d:'M45 50 L230 50 L230 260 L45 260 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M80 250 A28 28 0 1 1 80.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M290 250 A28 28 0 1 1 290.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M275 55 L288 55 L288 98 L275 98 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'rear-left': { viewBox:'0 0 620 465', paths:[
+    { d:'M 155 132 L 465 132 L 465 177 L 405 342 L 155 342 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 400 132 L 465 132 L 465 177 L 400 342 L 340 342 L 340 132 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.38)', strokeWidth:1.2, strokeDasharray:'5 4' } },
+    { d:'M 155 132 L 340 132 L 340 342 L 155 342 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 190 332 A 28 28 0 1 1 190 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 400 332 A 28 28 0 1 1 400 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 385 137 L 398 137 L 398 180 L 385 180 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'rear-right': { viewBox:'0 0 400 300', paths:[
-    { d:'M45 95 L105 50 L355 50 L355 260 L45 260 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M45 95 L108 50 L170 50 L170 260 L45 260 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.38)', strokeWidth:1.2, strokeDasharray:'5 4' } },
-    { d:'M170 50 L355 50 L355 260 L170 260 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M110 250 A28 28 0 1 1 110.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M315 250 A28 28 0 1 1 315.1 250 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M112 55 L125 55 L125 98 L112 98 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'rear-right': { viewBox:'0 0 620 465', paths:[
+    { d:'M 155 177 L 215 132 L 465 132 L 465 342 L 155 342 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 155 177 L 218 132 L 280 132 L 280 342 L 155 342 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.38)', strokeWidth:1.2, strokeDasharray:'5 4' } },
+    { d:'M 280 132 L 465 132 L 465 342 L 280 342 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 220 332 A 28 28 0 1 1 220 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 425 332 A 28 28 0 1 1 425 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 222 137 L 235 137 L 235 180 L 222 180 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
 }
 
 // ── BOX TRUCK stencils ─────────────────────────────────────────────
 const STENCILS_BOXTRUCK: StencilSet = {
-  front: { viewBox:'0 0 400 300', paths:[
-    { d:'M70 50 L330 50 L330 260 L70 260 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M85 62 L315 62 L315 150 L85 150 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.6)', strokeWidth:1.5, strokeDasharray:'6 4' } },
-    { d:'M75 162 L145 162 L145 210 L75 210 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
-    { d:'M255 162 L325 162 L325 210 L255 210 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
-    { d:'M70 225 L330 225 L330 242 L70 242 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1 } },
-    { d:'M100 252 A24 24 0 1 1 100.1 252 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M300 252 A24 24 0 1 1 300.1 252 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+  front: { viewBox:'0 0 620 465', paths:[
+    { d:'M 180 132 L 440 132 L 440 342 L 180 342 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 195 144 L 425 144 L 425 232 L 195 232 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.6)', strokeWidth:1.5, strokeDasharray:'6 4' } },
+    { d:'M 185 244 L 255 244 L 255 292 L 185 292 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
+    { d:'M 365 244 L 435 244 L 435 292 L 365 292 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 4' } },
+    { d:'M 180 307 L 440 307 L 440 324 L 180 324 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1 } },
+    { d:'M 210 334 A 24 24 0 1 1 210 334 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 410 334 A 24 24 0 1 1 410 334 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
   ]},
-  rear: { viewBox:'0 0 400 300', paths:[
-    { d:'M50 40 L350 40 L350 265 L50 265 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M55 45 L198 45 L198 258 L55 258 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
-    { d:'M202 45 L345 45 L345 258 L202 258 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
-    { d:'M200 45 L200 258', style:{ fill:'none', stroke:'rgba(255,255,255,0.4)', strokeWidth:1.5, strokeDasharray:'4 3' } },
-    { d:'M160 148 L182 148 L182 162 L160 162 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
-    { d:'M218 148 L240 148 L240 162 L218 162 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
-    { d:'M52 48 L76 48 L76 110 L52 110 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M324 48 L348 48 L348 110 L324 110 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M50 255 L350 255 L350 268 L50 268 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1 } },
-    { d:'M80 275 A22 22 0 1 1 80.1 275 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'4 3' } },
-    { d:'M95 275 A18 18 0 1 1 95.1 275 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
-    { d:'M305 275 A22 22 0 1 1 305.1 275 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'4 3' } },
-    { d:'M320 275 A18 18 0 1 1 320.1 275 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
+  rear: { viewBox:'0 0 620 465', paths:[
+    { d:'M 160 122 L 460 122 L 460 347 L 160 347 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 165 127 L 308 127 L 308 340 L 165 340 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
+    { d:'M 312 127 L 455 127 L 455 340 L 312 340 Z', style:{ fill:'rgba(255,255,255,0.05)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'6 4' } },
+    { d:'M 310 127 L 310 340', style:{ fill:'none', stroke:'rgba(255,255,255,0.4)', strokeWidth:1.5, strokeDasharray:'4 3' } },
+    { d:'M 270 230 L 292 230 L 292 244 L 270 244 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
+    { d:'M 328 230 L 350 230 L 350 244 L 328 244 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
+    { d:'M 162 130 L 186 130 L 186 192 L 162 192 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 434 130 L 458 130 L 458 192 L 434 192 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 160 337 L 460 337 L 460 350 L 160 350 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1 } },
+    { d:'M 190 357 A 22 22 0 1 1 190 357 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'4 3' } },
+    { d:'M 205 357 A 18 18 0 1 1 205 357 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
+    { d:'M 415 357 A 22 22 0 1 1 415 357 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'4 3' } },
+    { d:'M 430 357 A 18 18 0 1 1 430 357 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
   ]},
-  driver: { viewBox:'0 0 400 300', paths:[
-    { d:'M10 60 L390 60 L390 265 L10 265 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M10 60 L115 60 L115 265 L10 265 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M15 68 L110 68 L110 158 L15 158 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M15 162 L110 162 L110 235 L15 235 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
-    { d:'M50 196 L85 196 L85 207 L50 207 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
-    { d:'M115 60 L390 60 L390 265 L115 265 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.22)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M65 255 A36 36 0 1 1 65.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M310 255 A36 36 0 1 1 310.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M330 255 A30 30 0 1 1 330.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.4)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M3 96 L15 96 L15 120 L3 120 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  driver: { viewBox:'0 0 620 465', paths:[
+    { d:'M 120 142 L 500 142 L 500 347 L 120 347 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 120 142 L 225 142 L 225 347 L 120 347 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 125 150 L 220 150 L 220 240 L 125 240 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 125 244 L 220 244 L 220 317 L 125 317 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
+    { d:'M 160 278 L 195 278 L 195 289 L 160 289 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
+    { d:'M 225 142 L 500 142 L 500 347 L 225 347 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.22)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 175 337 A 36 36 0 1 1 175 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 420 337 A 36 36 0 1 1 420 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 440 337 A 30 30 0 1 1 440 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.4)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 113 178 L 125 178 L 125 202 L 113 202 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  passenger: { viewBox:'0 0 400 300', paths:[
-    { d:'M10 60 L390 60 L390 265 L10 265 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M285 60 L390 60 L390 265 L285 265 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M290 68 L385 68 L385 158 L290 158 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M290 162 L385 162 L385 235 L290 235 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
-    { d:'M315 196 L350 196 L350 207 L315 207 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
-    { d:'M10 60 L285 60 L285 265 L10 265 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.22)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M70 255 A36 36 0 1 1 70.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M330 255 A36 36 0 1 1 330.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
-    { d:'M350 255 A30 30 0 1 1 350.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.4)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M385 96 L397 96 L397 120 L385 120 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  passenger: { viewBox:'0 0 620 465', paths:[
+    { d:'M 120 142 L 500 142 L 500 347 L 120 347 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 395 142 L 500 142 L 500 347 L 395 347 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 400 150 L 495 150 L 495 240 L 400 240 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 400 244 L 495 244 L 495 317 L 400 317 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.35)', strokeWidth:1.2, strokeDasharray:'5 4' } },
+    { d:'M 425 278 L 460 278 L 460 289 L 425 289 Z', style:{ fill:'rgba(255,255,255,0.1)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1 } },
+    { d:'M 120 142 L 395 142 L 395 347 L 120 347 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.22)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 180 337 A 36 36 0 1 1 180 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 440 337 A 36 36 0 1 1 440 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'6 3' } },
+    { d:'M 460 337 A 30 30 0 1 1 460 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.4)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 495 178 L 507 178 L 507 202 L 495 202 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'front-left': { viewBox:'0 0 400 300', paths:[
-    { d:'M40 55 L330 55 L370 95 L370 265 L40 265 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M40 55 L155 55 L155 265 L40 265 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.28)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M45 62 L148 62 L148 158 L45 158 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M155 55 L330 55 L370 95 L370 265 L155 265 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M82 255 A32 32 0 1 1 82.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M318 255 A32 32 0 1 1 318.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M335 255 A26 26 0 1 1 335.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
-    { d:'M32 92 L46 92 L46 115 L32 115 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'front-left': { viewBox:'0 0 620 465', paths:[
+    { d:'M 150 137 L 440 137 L 480 177 L 480 347 L 150 347 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 150 137 L 265 137 L 265 347 L 150 347 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.28)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 155 144 L 258 144 L 258 240 L 155 240 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 265 137 L 440 137 L 480 177 L 480 347 L 265 347 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 192 337 A 32 32 0 1 1 192 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 428 337 A 32 32 0 1 1 428 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 445 337 A 26 26 0 1 1 445 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
+    { d:'M 142 174 L 156 174 L 156 197 L 142 197 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'front-right': { viewBox:'0 0 400 300', paths:[
-    { d:'M30 95 L70 55 L360 55 L360 265 L30 265 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M245 55 L360 55 L360 265 L245 265 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.28)', strokeWidth:1, strokeDasharray:'5 4' } },
-    { d:'M252 62 L355 62 L355 158 L252 158 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M30 95 L245 55 L245 265 L30 265 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M82 255 A32 32 0 1 1 82.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M95 255 A26 26 0 1 1 95.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
-    { d:'M318 255 A32 32 0 1 1 318.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M354 92 L368 92 L368 115 L354 115 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'front-right': { viewBox:'0 0 620 465', paths:[
+    { d:'M 140 177 L 180 137 L 470 137 L 470 347 L 140 347 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 355 137 L 470 137 L 470 347 L 355 347 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.28)', strokeWidth:1, strokeDasharray:'5 4' } },
+    { d:'M 362 144 L 465 144 L 465 240 L 362 240 Z', style:{ fill:'rgba(255,255,255,0.07)', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 140 177 L 355 137 L 355 347 L 140 347 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 192 337 A 32 32 0 1 1 192 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 205 337 A 26 26 0 1 1 205 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
+    { d:'M 428 337 A 32 32 0 1 1 428 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 464 174 L 478 174 L 478 197 L 464 197 Z', style:{ fill:'rgba(255,255,255,0.08)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'rear-left': { viewBox:'0 0 400 300', paths:[
-    { d:'M35 55 L365 55 L365 100 L305 265 L35 265 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M300 55 L365 55 L365 100 L300 265 L240 265 L240 55 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.38)', strokeWidth:1.2, strokeDasharray:'5 4' } },
-    { d:'M35 55 L240 55 L240 265 L35 265 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.18)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M72 255 A30 30 0 1 1 72.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M300 255 A30 30 0 1 1 300.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M318 255 A24 24 0 1 1 318.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
-    { d:'M284 60 L298 60 L298 105 L284 105 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'rear-left': { viewBox:'0 0 620 465', paths:[
+    { d:'M 145 137 L 475 137 L 475 182 L 415 347 L 145 347 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 410 137 L 475 137 L 475 182 L 410 347 L 350 347 L 350 137 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.38)', strokeWidth:1.2, strokeDasharray:'5 4' } },
+    { d:'M 145 137 L 350 137 L 350 347 L 145 347 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.18)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 182 337 A 30 30 0 1 1 182 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 410 337 A 30 30 0 1 1 410 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 428 337 A 24 24 0 1 1 428 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
+    { d:'M 394 142 L 408 142 L 408 187 L 394 187 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
-  'rear-right': { viewBox:'0 0 400 300', paths:[
-    { d:'M35 100 L95 55 L365 55 L365 265 L35 265 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
-    { d:'M35 100 L98 55 L160 55 L160 265 L35 265 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.38)', strokeWidth:1.2, strokeDasharray:'5 4' } },
-    { d:'M160 55 L365 55 L365 265 L160 265 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.18)', strokeWidth:1, strokeDasharray:'6 5' } },
-    { d:'M100 255 A30 30 0 1 1 100.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M115 255 A24 24 0 1 1 115.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
-    { d:'M325 255 A30 30 0 1 1 325.1 255 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M102 60 L116 60 L116 105 L102 105 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+  'rear-right': { viewBox:'0 0 620 465', paths:[
+    { d:'M 145 182 L 205 137 L 475 137 L 475 347 L 145 347 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
+    { d:'M 145 182 L 208 137 L 270 137 L 270 347 L 145 347 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.38)', strokeWidth:1.2, strokeDasharray:'5 4' } },
+    { d:'M 270 137 L 475 137 L 475 347 L 270 347 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.18)', strokeWidth:1, strokeDasharray:'6 5' } },
+    { d:'M 210 337 A 30 30 0 1 1 210 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 225 337 A 24 24 0 1 1 225 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
+    { d:'M 435 337 A 30 30 0 1 1 435 337 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
+    { d:'M 212 142 L 226 142 L 226 187 L 212 187 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
 }
 
@@ -397,9 +397,9 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
       <canvas ref={canvasRef} style={{ display:'none' }} />
 
       {cameraError && (
-        <div style={{ padding:24, textAlign:'center', background:'#1a1a1a' }}>
+        <div style={{ padding:24, textAlign:'center', background:'#1 a 1 a 1 a' }}>
           <div style={{ color:'#F09595', fontSize:14, marginBottom:16 }}>{cameraError}</div>
-          <button onClick={requestCamera} style={{ padding:'10px 20px', background:'#185FA5', color:'white', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Try again</button>
+          <button onClick={requestCamera} style={{ padding:'10px 20px', background:'#185F A ', color:'white', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Try again</button>
         </div>
       )}
 
@@ -412,10 +412,10 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
             {stencil.paths.map((p, i) => <path key={i} d={p.d} style={p.style} />)}
           </svg>
 
-          <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.45) 100%)', pointerEvents:'none' }} />
+          <div style={{ position:'absolute', inset:0, background:'r a di a l -gr a dien t (e l l ip s e a t c en t er, t r a n s p a ren t 40%, rgb a (0,0,0,0.45) 100%)', pointerEvents:'none' }} />
 
           {!videoPlaying && (
-            <div onClick={tapToStart} style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.7)', cursor:'pointer', zIndex:10 }}>
+            <div onClick={tapToStart} style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgb a (0,0,0,0.7)', cursor:'pointer', zIndex:10 }}>
               <div style={{ fontSize:48, marginBottom:12 }}>📷</div>
               <div style={{ fontSize:16, fontWeight:600, color:'white', marginBottom:6 }}>Tap to start camera</div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)' }}>Tap anywhere to activate</div>
@@ -423,33 +423,33 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
           )}
 
           <div style={{ position:'absolute', top:12, left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-            <div style={{ background:'rgba(0,0,0,0.6)', color:'white', padding:'5px 14px', borderRadius:20, fontSize:14, fontWeight:600 }}>
+            <div style={{ background:'rgb a (0,0,0,0.6)', color:'white', padding:'5px 14px', borderRadius:20, fontSize:14, fontWeight:600 }}>
               {shot.icon} {shot.label}
             </div>
-            <div style={{ background:'rgba(0,0,0,0.45)', color:'rgba(255,255,255,0.75)', padding:'3px 12px', borderRadius:16, fontSize:11 }}>
+            <div style={{ background:'rgb a (0,0,0,0.45)', color:'rgba(255,255,255,0.75)', padding:'3px 12px', borderRadius:16, fontSize:11 }}>
               {currentShot + 1} of {SHOTS.length} · {vehicleLabel} · align to outline
             </div>
           </div>
 
           {countdown !== null && (
-            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.35)', pointerEvents:'none' }}>
+            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgb a (0,0,0,0.35)', pointerEvents:'none' }}>
               <div style={{ fontSize:96, fontWeight:800, color:'white', lineHeight:1 }}>{countdown}</div>
             </div>
           )}
 
-          <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:'rgba(255,255,255,0.15)' }}>
-            <div style={{ height:'100%', background:'#185FA5', width:`${progress}%`, transition:'width 0.3s' }} />
+          <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:'rgb a (255,255,255,0.15)' }}>
+            <div style={{ height:'100%', background:'#185F A ', width:`${progress}%`, transition:'width 0.3s' }} />
           </div>
 
           <div style={{ position:'absolute', bottom:16, left:0, right:0, display:'flex', alignItems:'center', justifyContent:'center', gap:20 }}>
-            <button onClick={finishEarly} style={{ padding:'9px 16px', background:'rgba(255,255,255,0.15)', color:'white', border:'none', borderRadius:10, fontSize:12, cursor:'pointer' }}>
+            <button onClick={finishEarly} style={{ padding:'9px 16px', background:'rgb a (255,255,255,0.15)', color:'white', border:'none', borderRadius:10, fontSize:12, cursor:'pointer' }}>
               {captured.length > 0 ? `Finish (${captured.length})` : 'Cancel'}
             </button>
             <button onClick={capturePhoto} disabled={countdown !== null}
-              style={{ width:70, height:70, borderRadius:'50%', background:'white', border:'4px solid rgba(255,255,255,0.5)', cursor:'pointer', padding:0, display:'flex', alignItems:'center', justifyContent:'center', opacity: countdown !== null ? 0.6 : 1 }}>
-              <div style={{ width:52, height:52, borderRadius:'50%', background:'white', border:'3px solid #185FA5' }} />
+              style={{ width:70, height:70, borderRadius:'50%', background:'w h i t e', border:'4px solid rgba(255,255,255,0.5)', cursor:'pointer', padding:0, display:'flex', alignItems:'center', justifyContent:'center', opacity: countdown !== null ? 0.6 : 1 }}>
+              <div style={{ width:52, height:52, borderRadius:'50%', background:'w h i t e', border:'3px solid #185FA5' }} />
             </button>
-            <button onClick={skipShot} style={{ padding:'9px 16px', background:'rgba(255,255,255,0.15)', color:'white', border:'none', borderRadius:10, fontSize:12, cursor:'pointer' }}>Skip</button>
+            <button onClick={skipShot} style={{ padding:'9px 16px', background:'rgb a (255,255,255,0.15)', color:'white', border:'none', borderRadius:10, fontSize:12, cursor:'pointer' }}>Skip</button>
           </div>
         </div>
       )}
@@ -457,11 +457,11 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
       {mode === 'review' && lastDataUrl && (
         <div style={{ position:'relative', width:'100%', aspectRatio:'4/3' }}>
           <img src={lastDataUrl} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
-          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-end', padding:24, gap:12 }}>
+          <div style={{ position:'absolute', inset:0, background:'rgb a (0,0,0,0.45)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-end', padding:24, gap:12 }}>
             <div style={{ fontSize:15, fontWeight:600, color:'white' }}>Use this photo?</div>
             <div style={{ display:'flex', gap:12 }}>
-              <button onClick={retakePhoto} style={{ padding:'11px 22px', background:'rgba(255,255,255,0.2)', color:'white', border:'none', borderRadius:10, fontSize:14, cursor:'pointer' }}>Retake</button>
-              <button onClick={acceptPhoto} style={{ padding:'11px 26px', background:'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>
+              <button onClick={retakePhoto} style={{ padding:'11px 22px', background:'rgb a (255,255,255,0.2)', color:'white', border:'none', borderRadius:10, fontSize:14, cursor:'pointer' }}>Retake</button>
+              <button onClick={acceptPhoto} style={{ padding:'11px 26px', background:'#185F A ', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>
                 {currentShot < SHOTS.length - 1 ? `Next: ${SHOTS[currentShot + 1].label} →` : 'Finish ✓'}
               </button>
             </div>
