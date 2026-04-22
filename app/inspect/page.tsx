@@ -251,6 +251,7 @@ function InspectContent() {
           inspector,
           notes: notes + (uploadMode === 'video' ? ` [Video walkaround — ${images.length} frames extracted]` : ''),
           baselineDamages,
+          vehicleType: trucks.find(t => t.id === selectedTruck)?.vehicle_type || '',
         })
       })
       const rawText = await res.text()
@@ -596,6 +597,15 @@ function InspectContent() {
                 <span>Urgency: <strong style={{ color:'#1a1a1a' }}>{result.estimatedRepairUrgency}</strong></span>
                 {result.followUpRequired && <span style={{ color:'#A32D2D', fontWeight:500 }}>⚠ Follow-up required</span>}
                 <span style={{ color:'#888' }}>· {sourceFrames.length} frame{sourceFrames.length > 1 ? 's' : ''} analyzed</span>
+              </div>
+
+              {result.rentalProtectionNotes && (
+                <div style={{ background:'#E6F1FB', border:'0.5px solid rgba(24,95,165,0.2)', borderRadius:8, padding:'10px 14px', marginBottom:14 }}>
+                  <div style={{ fontSize:12, fontWeight:600, color:'#0C447C', marginBottom:4 }}>📋 Rental protection notes</div>
+                  <div style={{ fontSize:12, color:'#185FA5', lineHeight:1.5 }}>{result.rentalProtectionNotes}</div>
+                </div>
+              )}
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap', fontSize:12, color:'#888', marginBottom:16 }}>
               </div>
 
               {result.damages?.length > 0 ? (
