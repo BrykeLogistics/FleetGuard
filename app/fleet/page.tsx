@@ -4,11 +4,12 @@ import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
 
-const emptyForm = { truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'', vehicle_type:'' }
+const emptyForm = { truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'', vehicle_type:'', csa:'', fleet_type:'owned', rental_company:'', rental_contract:'', rental_start:'', rental_end:'' }
 
 export default function FleetPage() {
   const [trucks, setTrucks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<'owned'|'rental'|'csa'>('owned')
   const [viewMode, setViewMode] = useState<'grid'|'list'>('grid')
   const [showAdd, setShowAdd] = useState(false)
   const [editingId, setEditingId] = useState<string|null>(null)
@@ -20,6 +21,7 @@ export default function FleetPage() {
   const [truckDetail, setTruckDetail] = useState<{inspections:any[], damages:any[], photos:any[]}>({ inspections:[], damages:[], photos:[] })
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [photoUrls, setPhotoUrls] = useState<{[key:string]:string}>({})
+  const [csaFilter, setCsaFilter] = useState('all')
 
   useEffect(() => { loadTrucks() }, [])
 
@@ -42,8 +44,6 @@ export default function FleetPage() {
       supabase.from('inspection_photos').select('*').eq('truck_id', truck.id).order('created_at', { ascending: false }).limit(20),
     ])
     setTruckDetail({ inspections: inspRes.data || [], damages: dmgRes.data || [], photos: photoRes.data || [] })
-
-    // Load photo URLs
     const urls: {[key:string]:string} = {}
     for (const p of (photoRes.data || [])) {
       const { data } = await supabase.storage.from('inspection-photos').createSignedUrl(p.storage_path, 3600)
@@ -63,108 +63,48 @@ export default function FleetPage() {
       const data = await res.json()
       const results = data.Results || []
       const get = (var_: string) => results.find((r: any) => r.Variable === var_)?.Value || ''
-      const make = get('Make')
-      const model = get('Model')
-      const year = get('Model Year')
-      const bodyClass = get('Body Class') || ''
-      const gvwr = get('Gross Vehicle Weight Rating From') || ''
-
-      // Detect vehicle type using multiple signals
-      let vehicle_type = ''
-      const body = bodyClass.toLowerCase()
-      const makeL = make.toLowerCase()
-      const modelL = model.toLowerCase()
-      const mfr = get('Manufacturer Name').toLowerCase()
-      const trim = get('Trim').toLowerCase()
-      const series = get('Series').toLowerCase()
-      const vinUpper = vin.toUpperCase()
-      const wmi = vinUpper.slice(0, 3)
-      const vds = vinUpper.slice(3, 8) // positions 4-8 encode body/chassis
+      const make = get('Make'), model = get('Model'), year = get('Model Year')
+      const bodyClass = get('Body Class') || '', gvwr = get('Gross Vehicle Weight Rating From') || ''
+      const body = bodyClass.toLowerCase(), makeL = make.toLowerCase(), modelL = model.toLowerCase()
+      const mfr = get('Manufacturer Name').toLowerCase(), trim = get('Trim').toLowerCase(), series = get('Series').toLowerCase()
+      const vinUpper = vin.toUpperCase(), wmi = vinUpper.slice(0, 3)
       const gvwrNum = parseInt(gvwr.replace(/[^0-9]/g, '')) || 0
-
-      // ── Step van WMI codes (Ford P-series incomplete chassis) ──
-      // 1F6 = Ford incomplete vehicle (P-series step van chassis)
-      // 5F6 = Ford incomplete (Mexico plant)
+      let vehicle_type = ''
       const stepVanWMI = ['1F6', '5F6', '1GW', '1GX', '5GW']
-
-      // ── Step van VDS patterns ──
-      // Ford P-series: positions 4-8 contain P7, P8, P9, P10, P11, P12
-      const isStepVanVDS = /[A-Z][0-9]?[5-9]|P[0-9]/.test(vds) && wmi.startsWith('1F6')
-
-      // ── Known step van keywords ──
-      const stepVanKeywords = ['p700', 'p800', 'p900', 'p1000', 'p1100', 'p1200',
-        'step van', 'stepvan', 'walk-in', 'walk in', 'mt45', 'mt55', 'mt35',
-        'workhorse', 'p-series', 'utilimaster', 'grumman', 'olson', 'hackney']
+      const stepVanKeywords = ['p700','p800','p900','p1000','p1100','p1200','step van','stepvan','walk-in','walk in','mt45','mt55','mt35','workhorse','p-series','utilimaster','grumman','olson','hackney']
       const allText = `${body} ${modelL} ${mfr} ${trim} ${series}`
       const isStepVanKeyword = stepVanKeywords.some(k => allText.includes(k))
-
-      // ── Sprinter / cargo van ──
-      const sprinterKeywords = ['sprinter', 'transit connect', 'transit', 'promaster', 
-        'nv cargo', 'nv200', 'express cargo', 'savana cargo', 'econoline cargo']
+      const sprinterKeywords = ['sprinter','transit connect','transit','promaster','nv cargo','nv200','express cargo','savana cargo','econoline cargo']
       const isSprinterKeyword = sprinterKeywords.some(k => allText.includes(k))
-      const isSprinterBody = body.includes('cargo van') || body.includes('passenger van')
-      const sprinterWMI = ['WDB', 'WD4'] // Mercedes WMI codes
-
-      // ── Box truck ──
-      const boxTruckKeywords = ['m2', 'npr', 'nqr', 'ftr', 'fvr', 'f650', 'f750',
-        'c7500', 'c6500', 'box truck', 'straight truck', 'cab-over', 'cabover', 'low cab']
+      const boxTruckKeywords = ['m2','npr','nqr','ftr','fvr','f650','f750','c7500','c6500','box truck','straight truck','cab-over','cabover','low cab']
       const isBoxTruckKeyword = boxTruckKeywords.some(k => allText.includes(k))
-      const isBoxTruckBody = body.includes('straight') || body.includes('box truck') || body.includes('cab-over')
+      if (stepVanWMI.includes(wmi) || isStepVanKeyword) vehicle_type = 'stepvan'
+      else if (isSprinterKeyword || (body.includes('cargo van') && gvwrNum < 14000)) vehicle_type = 'sprinter'
+      else if (isBoxTruckKeyword || body.includes('straight') || gvwrNum >= 26000) vehicle_type = 'boxtruck'
+      else if (body.includes('van') && gvwrNum < 14000) vehicle_type = 'sprinter'
+      else if (gvwrNum >= 14000 && gvwrNum < 26000) vehicle_type = 'stepvan'
+      else if (gvwrNum >= 26000) vehicle_type = 'boxtruck'
 
-      // ── Priority detection order ──
-      if (stepVanWMI.includes(wmi) || isStepVanVDS || isStepVanKeyword) {
-        vehicle_type = 'stepvan'
-      } else if (sprinterWMI.some(w => wmi.startsWith(w)) || isSprinterKeyword || (isSprinterBody && gvwrNum < 14000)) {
-        vehicle_type = 'sprinter'
-      } else if (isBoxTruckKeyword || isBoxTruckBody || gvwrNum >= 26000) {
-        vehicle_type = 'boxtruck'
-      } else if (body.includes('van') && gvwrNum < 14000) {
-        vehicle_type = 'sprinter'
-      } else if (gvwrNum >= 14000 && gvwrNum < 26000) {
-        vehicle_type = 'stepvan'
-      } else if (gvwrNum >= 26000) {
-        vehicle_type = 'boxtruck'
-      }
+      const vds57 = vinUpper.slice(4, 7)
+      const fordPSeries: Record<string, string> = { 'F3K':'P600','F4K':'P700','F4A':'P700','F5K':'P1000','F5A':'P1000','F5F':'P1000','F6K':'P1100','F6A':'P1100','F7K':'P1200','F7A':'P1200','F8K':'P1400','F8A':'P1400' }
+      const isPSeries = (wmi === '1F6' || wmi === '5F6') && !!fordPSeries[vds57]
+      const finalModel = isPSeries ? fordPSeries[vds57] : (model !== 'Not Applicable' ? model : '')
+      const finalMake = isPSeries ? 'Utilimaster' : (make !== 'Not Applicable' ? make : '')
 
       if (make && make !== 'Not Applicable') {
-        // Ford P-series: decode model and make from VIN positions 5-7
-        const vds57 = vinUpper.slice(4, 7)
-        const fordPSeries: Record<string, string> = {
-          'F3K': 'P600', 'F4K': 'P700', 'F4A': 'P700',
-          'F5K': 'P1000', 'F5A': 'P1000', 'F5F': 'P1000',
-          'F6K': 'P1100', 'F6A': 'P1100',
-          'F7K': 'P1200', 'F7A': 'P1200',
-          'F8K': 'P1400', 'F8A': 'P1400',
-        }
-        const isPSeries = (wmi === '1F6' || wmi === '5F6') && !!fordPSeries[vds57]
-        const finalModel = isPSeries ? fordPSeries[vds57] : (model !== 'Not Applicable' ? model : '')
-        const finalMake = isPSeries ? 'Utilimaster' : (make !== 'Not Applicable' ? make : '')
-
-        setForm(prev => ({
-          ...prev,
-          make: finalMake || prev.make,
-          model: finalModel || prev.model,
-          year: year !== 'Not Applicable' ? year : prev.year,
-          vehicle_type: vehicle_type || prev.vehicle_type,
-        }))
-
-        const typeLabel = vehicle_type === 'sprinter' ? 'Sprinter/Cargo Van' : vehicle_type === 'stepvan' ? 'Step Van' : vehicle_type === 'boxtruck' ? 'Box Truck' : 'Unknown — please select manually'
+        setForm(prev => ({ ...prev, make: finalMake || prev.make, model: finalModel || prev.model, year: year !== 'Not Applicable' ? year : prev.year, vehicle_type: vehicle_type || prev.vehicle_type }))
+        const typeLabel = vehicle_type === 'sprinter' ? 'Sprinter/Cargo Van' : vehicle_type === 'stepvan' ? 'Step Van' : vehicle_type === 'boxtruck' ? 'Box Truck' : ''
         const makeNote = isPSeries ? ' (update make if Grumman, Morgan Olson, etc.)' : ''
-        setVinMessage(`✓ Found: ${year} ${finalMake} ${finalModel} · ${typeLabel}${makeNote} — review and confirm below`)
-      } else {
-        setVinMessage('VIN not found — please fill in details manually')
-      }
-    } catch {
-      setVinMessage('Lookup failed — please fill in details manually')
-    }
+        setVinMessage(`✓ Found: ${year} ${finalMake} ${finalModel}${typeLabel ? ` · ${typeLabel}` : ''}${makeNote} — review and confirm below`)
+      } else { setVinMessage('VIN not found — please fill in details manually') }
+    } catch { setVinMessage('Lookup failed — please fill in details manually') }
     setVinLoading(false)
   }
 
   function startEdit(truck: any) {
     setEditingId(truck.id)
-    setForm({ truck_number: truck.truck_number, driver_name: truck.driver_name, make: truck.make||'', model: truck.model||'', year: truck.year?.toString()||'', license_plate: truck.license_plate||'', vin: truck.vin||'', vehicle_type: truck.vehicle_type||'' })
-    setShowAdd(false)
-    setSelectedTruck(null)
+    setForm({ truck_number:truck.truck_number, driver_name:truck.driver_name, make:truck.make||'', model:truck.model||'', year:truck.year?.toString()||'', license_plate:truck.license_plate||'', vin:truck.vin||'', vehicle_type:truck.vehicle_type||'', csa:truck.csa||'', fleet_type:truck.fleet_type||'owned', rental_company:truck.rental_company||'', rental_contract:truck.rental_contract||'', rental_start:truck.rental_start||'', rental_end:truck.rental_end||'' })
+    setShowAdd(false); setSelectedTruck(null)
   }
 
   function cancelEdit() { setEditingId(null); setForm(emptyForm); setShowAdd(false) }
@@ -173,14 +113,10 @@ export default function FleetPage() {
     e.preventDefault(); setSaving(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    if (editingId) {
-      await supabase.from('trucks').update({ ...form, year: parseInt(form.year)||0 }).eq('id', editingId)
-      setEditingId(null)
-    } else {
-      await supabase.from('trucks').insert({ ...form, year: parseInt(form.year)||0, user_id: user.id })
-      setShowAdd(false)
-    }
-    setForm(emptyForm); setSaving(false); loadTrucks()
+    const payload = { ...form, year: parseInt(form.year)||0 }
+    if (editingId) { await supabase.from('trucks').update(payload).eq('id', editingId); setEditingId(null) }
+    else { await supabase.from('trucks').insert({ ...payload, user_id: user.id }) }
+    setForm(emptyForm); setShowAdd(false); setSaving(false); loadTrucks()
   }
 
   async function deleteTruck(id: string) {
@@ -190,8 +126,7 @@ export default function FleetPage() {
   }
 
   function lastInspection(truck: any) {
-    const insps = (truck.inspections || []).sort((a:any,b:any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    return insps[0] || null
+    return (truck.inspections||[]).sort((a:any,b:any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] || null
   }
 
   function truckStatus(truck: any) {
@@ -203,89 +138,85 @@ export default function FleetPage() {
     return { label:'All clear', cls:'badge-green' }
   }
 
-  const condColor = (c:string) => c==='Good'?'#27500A':(c==='Critical'||c==='Poor')?'#A32D2D':c==='Fair'?'#633806':'#555'
   const condBadge = (c:string) => c==='Good'?'badge-green':(c==='Critical'||c==='Poor')?'badge-red':c==='Fair'?'badge-amber':'badge-gray'
   const sevDot = (s:string) => s==='critical'?'#E24B4A':s==='moderate'?'#EF9F27':'#639922'
+  const vtLabel = (v:string) => v==='sprinter'?'Sprinter Van':v==='stepvan'?'Step Van':v==='boxtruck'?'Box Truck':''
+  const vtColor = (v:string) => v==='sprinter'?{bg:'#EAF3DE',color:'#27500A'}:v==='stepvan'?{bg:'#E6F1FB',color:'#0C447C'}:{bg:'#FAEEDA',color:'#633806'}
   const showForm = showAdd || editingId !== null
 
-  // ── Truck detail panel ──────────────────────────────────────────
+  // Derive CSA list
+  const csaList = Array.from(new Set(trucks.filter(t => t.csa).map(t => t.csa))).sort()
+
+  // Filter trucks by view
+  const ownedTrucks = trucks.filter(t => (t.fleet_type || 'owned') === 'owned')
+  const rentalTrucks = trucks.filter(t => t.fleet_type === 'rental')
+  const filteredByCsa = csaFilter === 'all' ? trucks : trucks.filter(t => t.csa === csaFilter)
+  const csaGroups: Record<string, any[]> = csaList.reduce((acc: Record<string, any[]>, csa: string) => { acc[csa] = trucks.filter((t: any) => t.csa === csa); return acc }, {})
+  const noCsaTrucks = trucks.filter(t => !t.csa)
+
+  // ── TRUCK DETAIL PANEL ──
   if (selectedTruck) {
     const { inspections, damages, photos } = truckDetail
     const newDamages = damages.filter(d => d.is_new)
-    const baselineInsp = inspections.find(i => i.is_baseline)
-    const lastInsp = inspections[0]
     return (
       <div>
         <Navbar />
         <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px' }}>
-          {/* Back */}
-          <button onClick={closeTruck} style={{ background:'none', border:'none', color:'#185FA5', cursor:'pointer', fontSize:13, marginBottom:16, padding:0, display:'flex', alignItems:'center', gap:4 }}>← Back to fleet</button>
-
-          {/* Truck header */}
+          <button onClick={closeTruck} style={{ background:'none', border:'none', color:'#185FA5', cursor:'pointer', fontSize:13, marginBottom:16, padding:0 }}>← Back to fleet</button>
           <div className="card" style={{ padding:'20px', marginBottom:14 }}>
             <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
               <div>
-                <div style={{ fontSize:22, fontWeight:700 }}>#{selectedTruck.truck_number}</div>
-                <div style={{ fontSize:15, color:'#555', marginTop:2 }}>{selectedTruck.driver_name}</div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:4 }}>
+                  <div style={{ fontSize:22, fontWeight:700 }}>#{selectedTruck.truck_number}</div>
+                  {selectedTruck.fleet_type === 'rental' && <span style={{ background:'#FAEEDA', color:'#633806', fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20 }}>Rental</span>}
+                  {selectedTruck.csa && <span style={{ background:'#E6F1FB', color:'#0C447C', fontSize:11, fontWeight:500, padding:'2px 8px', borderRadius:20 }}>📍 {selectedTruck.csa}</span>}
+                </div>
+                <div style={{ fontSize:15, color:'#555' }}>{selectedTruck.driver_name}</div>
                 <div style={{ fontSize:13, color:'#888', marginTop:4 }}>{[selectedTruck.year, selectedTruck.make, selectedTruck.model].filter(Boolean).join(' ')}</div>
                 {selectedTruck.license_plate && <div style={{ fontSize:13, color:'#888', marginTop:2 }}>Plate: {selectedTruck.license_plate}</div>}
-                {selectedTruck.vin && <div style={{ fontSize:12, color:'#888', marginTop:2, fontFamily:'monospace', letterSpacing:'0.04em' }}>VIN: {selectedTruck.vin}</div>}
+                {selectedTruck.vin && <div style={{ fontSize:12, color:'#888', marginTop:2, fontFamily:'monospace' }}>VIN: {selectedTruck.vin}</div>}
+                {selectedTruck.fleet_type === 'rental' && selectedTruck.rental_company && (
+                  <div style={{ marginTop:8, padding:'8px 12px', background:'#FAEEDA', borderRadius:8, fontSize:12 }}>
+                    <div style={{ fontWeight:500, color:'#633806' }}>{selectedTruck.rental_company}</div>
+                    {selectedTruck.rental_contract && <div style={{ color:'#854F0B' }}>Contract: {selectedTruck.rental_contract}</div>}
+                    {selectedTruck.rental_start && <div style={{ color:'#854F0B' }}>Rental: {selectedTruck.rental_start}{selectedTruck.rental_end ? ` → ${selectedTruck.rental_end}` : ''}</div>}
+                  </div>
+                )}
               </div>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                 <Link href={`/inspect?truck=${selectedTruck.id}`} className="btn btn-primary" style={{ fontSize:13 }}>+ New inspection</Link>
-                <button className="btn" onClick={() => startEdit(selectedTruck)} style={{ fontSize:13 }}>Edit truck</button>
+                <button className="btn" onClick={() => startEdit(selectedTruck)} style={{ fontSize:13 }}>Edit</button>
                 <button onClick={() => deleteTruck(selectedTruck.id)} style={{ padding:'8px 14px', borderRadius:7, border:'0.5px solid rgba(200,0,0,0.2)', background:'transparent', color:'#A32D2D', cursor:'pointer', fontSize:13 }}>Delete</button>
               </div>
             </div>
-
-            {/* Stats row */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px,1fr))', gap:10, marginTop:16 }}>
-              {[
-                { label:'Total inspections', value: inspections.length },
-                { label:'New damages', value: newDamages.length, color: newDamages.length > 0 ? '#A32D2D' : '#27500A' },
-                { label:'Total damages', value: damages.length },
-                { label:'Last inspection', value: lastInsp ? new Date(lastInsp.created_at).toLocaleDateString() : 'Never' },
-              ].map(s => (
+              {[{label:'Inspections',value:inspections.length},{label:'New damages',value:newDamages.length,color:newDamages.length>0?'#A32D2D':'#27500A'},{label:'Total damages',value:damages.length},{label:'Last inspected',value:inspections[0]?new Date(inspections[0].created_at).toLocaleDateString():'Never'}].map(s => (
                 <div key={s.label} style={{ background:'#f7f7f6', borderRadius:8, padding:'12px' }}>
                   <div style={{ fontSize:11, color:'#888', marginBottom:4 }}>{s.label}</div>
-                  <div style={{ fontSize:16, fontWeight:600, color: s.color || '#1a1a1a' }}>{loadingDetail ? '—' : s.value}</div>
+                  <div style={{ fontSize:16, fontWeight:600, color:(s as any).color||'#1a1a1a' }}>{loadingDetail?'—':s.value}</div>
                 </div>
               ))}
             </div>
           </div>
-
-          {loadingDetail && <div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading truck history...</div>}
-
+          {loadingDetail && <div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading...</div>}
           {!loadingDetail && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-
-              {/* Photos */}
               <div className="card" style={{ padding:'16px', gridColumn:'1/-1' }}>
-                <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Inspection photos ({photos.length})</div>
-                {photos.length === 0 ? (
-                  <div style={{ color:'#aaa', fontSize:13, padding:'20px 0', textAlign:'center' }}>No photos yet — run an inspection to capture photos</div>
-                ) : (
+                <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Photos ({photos.length})</div>
+                {photos.length === 0 ? <div style={{ color:'#aaa', fontSize:13, padding:'20px 0', textAlign:'center' }}>No photos yet</div> : (
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px,1fr))', gap:8 }}>
                     {photos.map(p => (
-                      <div key={p.id} style={{ position:'relative' }}>
-                        {photoUrls[p.id] ? (
-                          <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', cursor:'pointer' }} onClick={() => window.open(photoUrls[p.id], '_blank')} />
-                        ) : (
-                          <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>
-                        )}
+                      <div key={p.id}>
+                        {photoUrls[p.id] ? <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', cursor:'pointer' }} onClick={() => window.open(photoUrls[p.id], '_blank')} /> : <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>}
                         <div style={{ fontSize:10, color:'#aaa', marginTop:3, textAlign:'center' }}>{new Date(p.created_at).toLocaleDateString()}</div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* Inspection history */}
               <div className="card" style={{ padding:'16px' }}>
                 <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Inspection history ({inspections.length})</div>
-                {inspections.length === 0 ? (
-                  <div style={{ color:'#aaa', fontSize:13, padding:'16px 0', textAlign:'center' }}>No inspections yet</div>
-                ) : inspections.map(insp => (
+                {inspections.length === 0 ? <div style={{ color:'#aaa', fontSize:13, padding:'16px 0', textAlign:'center' }}>No inspections yet</div> : inspections.map(insp => (
                   <div key={insp.id} style={{ padding:'10px 0', borderBottom:'0.5px solid rgba(0,0,0,0.07)', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
                     <div>
                       <div style={{ fontSize:13, fontWeight:500 }}>{insp.inspection_type} {insp.is_baseline && <span style={{ fontSize:10, background:'#E6F1FB', color:'#0C447C', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>baseline</span>}</div>
@@ -296,25 +227,19 @@ export default function FleetPage() {
                   </div>
                 ))}
               </div>
-
-              {/* Damage log */}
               <div className="card" style={{ padding:'16px' }}>
                 <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Damage log ({damages.length})</div>
-                {damages.length === 0 ? (
-                  <div style={{ color:'#aaa', fontSize:13, padding:'16px 0', textAlign:'center' }}>No damage recorded</div>
-                ) : damages.map(d => (
+                {damages.length === 0 ? <div style={{ color:'#aaa', fontSize:13, padding:'16px 0', textAlign:'center' }}>No damage recorded</div> : damages.map(d => (
                   <div key={d.id} style={{ display:'flex', gap:8, padding:'10px 0', borderBottom:'0.5px solid rgba(0,0,0,0.07)' }}>
-                    <div style={{ width:8, height:8, borderRadius:'50%', background: sevDot(d.severity), marginTop:4, flexShrink:0 }} />
+                    <div style={{ width:8, height:8, borderRadius:'50%', background:sevDot(d.severity), marginTop:4, flexShrink:0 }} />
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:13, fontWeight:500 }}>{d.location} {d.is_new && <span style={{ fontSize:10, background:'#FCEBEB', color:'#A32D2D', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>NEW</span>}</div>
                       <div style={{ fontSize:11, color:'#555', marginTop:2 }}>{d.description}</div>
                       {d.recommendation && <div style={{ fontSize:11, color:'#185FA5', marginTop:2 }}>→ {d.recommendation}</div>}
-                      <div style={{ fontSize:10, color:'#aaa', marginTop:2 }}>{new Date((d.inspections as any)?.created_at).toLocaleDateString()} · {(d.inspections as any)?.inspection_type}</div>
                     </div>
                   </div>
                 ))}
               </div>
-
             </div>
           )}
         </div>
@@ -322,139 +247,223 @@ export default function FleetPage() {
     )
   }
 
-  // ── Fleet list/grid view ────────────────────────────────────────
+  // ── TRUCK CARD ──
+  function TruckCard({ truck }: { truck: any }) {
+    const status = truckStatus(truck)
+    const last = lastInspection(truck)
+    const isEditing = editingId === truck.id
+    const vt = vtColor(truck.vehicle_type)
+    return (
+      <div className="card" style={{ padding:'16px', cursor:'pointer', border: isEditing ? '1.5px solid #185FA5' : undefined }} onClick={() => !showForm && openTruck(truck)}>
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:8 }}>
+          <div>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <div style={{ fontSize:15, fontWeight:600 }}>#{truck.truck_number}</div>
+              {truck.fleet_type === 'rental' && <span style={{ background:'#FAEEDA', color:'#633806', fontSize:10, fontWeight:600, padding:'1px 6px', borderRadius:10 }}>Rental</span>}
+            </div>
+            <div style={{ fontSize:13, color:'#555', marginTop:2 }}>{truck.driver_name}</div>
+          </div>
+          <span className={`badge ${status.cls}`}>{status.label}</span>
+        </div>
+        {(truck.make||truck.model) && <div style={{ fontSize:12, color:'#888', marginBottom:3 }}>{[truck.year,truck.make,truck.model].filter(Boolean).join(' ')}</div>}
+        {truck.vehicle_type && <div style={{ marginBottom:4 }}><span style={{ background:vt.bg, color:vt.color, fontSize:10, fontWeight:500, padding:'2px 7px', borderRadius:10 }}>{vtLabel(truck.vehicle_type)}</span></div>}
+        {truck.csa && <div style={{ fontSize:11, color:'#888', marginBottom:3 }}>📍 {truck.csa}</div>}
+        {truck.license_plate && <div style={{ fontSize:11, color:'#888', marginBottom:2 }}>Plate: {truck.license_plate}</div>}
+        {truck.vin && <div style={{ fontSize:10, color:'#aaa', marginBottom:6, fontFamily:'monospace' }}>{truck.vin}</div>}
+        <div style={{ fontSize:11, color:'#aaa', marginBottom:10 }}>{last ? `Last inspected: ${new Date(last.created_at).toLocaleDateString()}` : 'No inspections yet'}</div>
+        <div style={{ display:'flex', gap:5 }} onClick={e => e.stopPropagation()}>
+          <Link href={`/inspect?truck=${truck.id}`} className="btn" style={{ flex:1, justifyContent:'center', fontSize:11, padding:'5px 8px' }}>Inspect</Link>
+          <button onClick={() => startEdit(truck)} style={{ padding:'5px 10px', borderRadius:7, border:'0.5px solid rgba(0,0,0,0.15)', background:'transparent', color:'#185FA5', cursor:'pointer', fontSize:11 }}>Edit</button>
+          <button onClick={() => deleteTruck(truck.id)} style={{ padding:'5px 10px', borderRadius:7, border:'0.5px solid rgba(200,0,0,0.2)', background:'transparent', color:'#A32D2D', cursor:'pointer', fontSize:11 }}>Delete</button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── ADD/EDIT FORM ──
+  function TruckForm() {
+    const isRental = form.fleet_type === 'rental'
+    return (
+      <div className="card" style={{ padding:'20px', marginBottom:16, border: editingId ? '1.5px solid #185FA5' : undefined }}>
+        <div style={{ fontSize:14, fontWeight:500, marginBottom:16 }}>{editingId ? 'Edit truck' : 'Add new truck'}</div>
+        <form onSubmit={saveTruck}>
+          {/* Fleet type toggle */}
+          <div style={{ display:'flex', gap:8, marginBottom:16 }}>
+            <button type="button" onClick={() => setForm({...form, fleet_type:'owned'})} style={{ flex:1, padding:'10px', borderRadius:10, border: form.fleet_type==='owned' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: form.fleet_type==='owned' ? '#E6F1FB' : 'white', cursor:'pointer', fontSize:13, fontWeight:500, color: form.fleet_type==='owned' ? '#0C447C' : '#555' }}>🚛 Owned vehicle</button>
+            <button type="button" onClick={() => setForm({...form, fleet_type:'rental'})} style={{ flex:1, padding:'10px', borderRadius:10, border: form.fleet_type==='rental' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: form.fleet_type==='rental' ? '#FAEEDA' : 'white', cursor:'pointer', fontSize:13, fontWeight:500, color: form.fleet_type==='rental' ? '#633806' : '#555' }}>📋 Rental vehicle</button>
+          </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+            <div><label>Truck / unit number *</label><input value={form.truck_number} onChange={e => setForm({...form, truck_number:e.target.value})} placeholder="e.g. TK-001" required /></div>
+            <div><label>Driver name *</label><input value={form.driver_name} onChange={e => setForm({...form, driver_name:e.target.value})} placeholder="e.g. Carlos Martinez" required /></div>
+            <div><label>CSA / Location</label><input value={form.csa} onChange={e => setForm({...form, csa:e.target.value})} placeholder="e.g. Fort Lauderdale" list="csa-list" /><datalist id="csa-list">{csaList.map(c => <option key={c} value={c} />)}</datalist></div>
+            <div><label>Make</label><input value={form.make} onChange={e => setForm({...form, make:e.target.value})} placeholder="e.g. Ford" /></div>
+            <div><label>Model</label><input value={form.model} onChange={e => setForm({...form, model:e.target.value})} placeholder="e.g. Transit" /></div>
+            <div><label>Year</label><input value={form.year} onChange={e => setForm({...form, year:e.target.value})} placeholder="e.g. 2022" type="number" /></div>
+            <div><label>License plate</label><input value={form.license_plate} onChange={e => setForm({...form, license_plate:e.target.value})} placeholder="e.g. ABC-1234" /></div>
+            <div>
+              <label>Vehicle type</label>
+              <select value={form.vehicle_type} onChange={e => setForm({...form, vehicle_type:e.target.value})}>
+                <option value="">— select type —</option>
+                <option value="sprinter">Sprinter / Cargo Van</option>
+                <option value="stepvan">Step Van / Walk-in Van</option>
+                <option value="boxtruck">Box Truck / Straight Truck</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div style={{ gridColumn:'1/-1' }}>
+              <label>VIN</label>
+              <div style={{ display:'flex', gap:8 }}>
+                <input value={form.vin} onChange={e => { setForm({...form, vin:e.target.value.toUpperCase()}); setVinMessage('') }} placeholder="17-character VIN" maxLength={17} style={{ textTransform:'uppercase', fontFamily:'monospace', letterSpacing:'0.05em', flex:1 }} />
+                <button type="button" onClick={() => lookupVin(form.vin)} disabled={vinLoading} style={{ padding:'8px 14px', background:'#185FA5', color:'white', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', flexShrink:0, opacity:vinLoading?0.7:1 }}>{vinLoading ? 'Looking up...' : 'Look up VIN'}</button>
+              </div>
+              {vinMessage && <div style={{ fontSize:12, marginTop:5, color:vinMessage.startsWith('✓')?'#27500A':'#A32D2D' }}>{vinMessage}</div>}
+            </div>
+          </div>
+
+          {/* Rental fields */}
+          {isRental && (
+            <div style={{ background:'#FAEEDA', borderRadius:10, padding:'14px', marginBottom:12 }}>
+              <div style={{ fontSize:13, fontWeight:500, color:'#633806', marginBottom:10 }}>Rental details</div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div><label>Rental company</label><input value={form.rental_company} onChange={e => setForm({...form, rental_company:e.target.value})} placeholder="e.g. Penske, Ryder" /></div>
+                <div><label>Contract / reservation #</label><input value={form.rental_contract} onChange={e => setForm({...form, rental_contract:e.target.value})} placeholder="Contract number" /></div>
+                <div><label>Rental start date</label><input type="date" value={form.rental_start} onChange={e => setForm({...form, rental_start:e.target.value})} /></div>
+                <div><label>Expected return date</label><input type="date" value={form.rental_end} onChange={e => setForm({...form, rental_end:e.target.value})} /></div>
+              </div>
+              <div style={{ fontSize:12, color:'#854F0B', marginTop:10 }}>⚠ Remember to run a baseline inspection immediately after adding a rental vehicle to document pre-existing damage.</div>
+            </div>
+          )}
+
+          <div style={{ display:'flex', gap:8 }}>
+            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Save changes' : 'Save truck'}</button>
+            <button type="button" className="btn" onClick={cancelEdit}>Cancel</button>
+          </div>
+        </form>
+      </div>
+    )
+  }
+
+  // ── MAIN FLEET VIEW ──
   return (
     <div>
       <Navbar />
       <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px' }}>
 
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:10 }}>
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16, flexWrap:'wrap', gap:10 }}>
           <div>
             <div style={{ fontSize:18, fontWeight:600 }}>Fleet</div>
-            <div style={{ fontSize:13, color:'#888', marginTop:2 }}>{trucks.length} truck{trucks.length !== 1 ? 's' : ''}</div>
+            <div style={{ fontSize:13, color:'#888', marginTop:2 }}>{trucks.length} total · {ownedTrucks.length} owned · {rentalTrucks.length} rental</div>
           </div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            {/* View toggle */}
             <div style={{ display:'flex', border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:8, overflow:'hidden' }}>
-              <button onClick={() => setViewMode('grid')} style={{ padding:'7px 12px', background: viewMode==='grid' ? '#185FA5' : 'white', color: viewMode==='grid' ? 'white' : '#555', border:'none', cursor:'pointer', fontSize:13 }}>⊞ Grid</button>
-              <button onClick={() => setViewMode('list')} style={{ padding:'7px 12px', background: viewMode==='list' ? '#185FA5' : 'white', color: viewMode==='list' ? 'white' : '#555', border:'none', cursor:'pointer', fontSize:13, borderLeft:'0.5px solid rgba(0,0,0,0.15)' }}>☰ List</button>
+              <button onClick={() => setViewMode('grid')} style={{ padding:'7px 12px', background:viewMode==='grid'?'#185FA5':'white', color:viewMode==='grid'?'white':'#555', border:'none', cursor:'pointer', fontSize:13 }}>⊞</button>
+              <button onClick={() => setViewMode('list')} style={{ padding:'7px 12px', background:viewMode==='list'?'#185FA5':'white', color:viewMode==='list'?'white':'#555', border:'none', cursor:'pointer', fontSize:13, borderLeft:'0.5px solid rgba(0,0,0,0.15)' }}>☰</button>
             </div>
             <button className="btn btn-primary" onClick={() => { setShowAdd(!showAdd); setEditingId(null); setForm(emptyForm) }}>+ Add truck</button>
           </div>
         </div>
 
-        {/* Add/Edit form */}
-        {showForm && (
-          <div className="card" style={{ padding:'20px', marginBottom:16, border: editingId ? '1.5px solid #185FA5' : undefined }}>
-            <div style={{ fontSize:14, fontWeight:500, marginBottom:16 }}>{editingId ? 'Edit truck' : 'Add new truck'}</div>
-            <form onSubmit={saveTruck}>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
-                <div><label>Truck number *</label><input value={form.truck_number} onChange={e => setForm({...form, truck_number:e.target.value})} placeholder="e.g. TK-001" required /></div>
-                <div><label>Driver name *</label><input value={form.driver_name} onChange={e => setForm({...form, driver_name:e.target.value})} placeholder="e.g. Carlos Martinez" required /></div>
-                <div><label>Make</label><input value={form.make} onChange={e => setForm({...form, make:e.target.value})} placeholder="e.g. Freightliner" /></div>
-                <div><label>Model</label><input value={form.model} onChange={e => setForm({...form, model:e.target.value})} placeholder="e.g. Cascadia" /></div>
-                <div><label>Year</label><input value={form.year} onChange={e => setForm({...form, year:e.target.value})} placeholder="e.g. 2021" type="number" /></div>
-                <div><label>License plate</label><input value={form.license_plate} onChange={e => setForm({...form, license_plate:e.target.value})} placeholder="e.g. ABC-1234" /></div>
-                <div style={{ gridColumn:'1/-1' }}>
-                  <label>VIN</label>
-                  <div style={{ display:'flex', gap:8 }}>
-                    <input value={form.vin} onChange={e => { setForm({...form, vin:e.target.value.toUpperCase()}); setVinMessage('') }} placeholder="17-character VIN" maxLength={17} style={{ textTransform:'uppercase', fontFamily:'monospace', letterSpacing:'0.05em', flex:1 }} />
-                    <button type="button" onClick={() => lookupVin(form.vin)} disabled={vinLoading} style={{ padding:'8px 14px', background:'#185FA5', color:'white', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', flexShrink:0, opacity: vinLoading ? 0.7 : 1 }}>
-                      {vinLoading ? 'Looking up...' : 'Look up VIN'}
-                    </button>
-                  </div>
-                  {vinMessage && <div style={{ fontSize:12, marginTop:5, color: vinMessage.startsWith('✓') ? '#27500A' : '#A32D2D' }}>{vinMessage}</div>}
-                </div>
-                <div style={{ gridColumn:'1/-1' }}>
-                  <label>Vehicle type</label>
-                  <select value={form.vehicle_type} onChange={e => setForm({...form, vehicle_type:e.target.value})}>
-                    <option value="">— select vehicle type —</option>
-                    <option value="sprinter">Sprinter / Cargo Van (e.g. Mercedes Sprinter, Ford Transit, Ram ProMaster)</option>
-                    <option value="stepvan">Step Van / Walk-in Van (e.g. Grumman, Utilimaster, P-series)</option>
-                    <option value="boxtruck">Box Truck / Straight Truck (e.g. Freightliner M2, Isuzu NPR)</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-              </div>
-              <div style={{ display:'flex', gap:8 }}>
-                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Save changes' : 'Save truck'}</button>
-                <button type="button" className="btn" onClick={cancelEdit}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        )}
+        {/* View tabs */}
+        <div style={{ display:'flex', borderBottom:'0.5px solid rgba(0,0,0,0.1)', marginBottom:16 }}>
+          {([['owned','🚛 My Fleet'],['rental','📋 Rental Fleet'],['csa','📍 By CSA']] as const).map(([v, label]) => (
+            <button key={v} onClick={() => setView(v)} style={{ padding:'10px 18px', fontSize:13, fontWeight:500, background:'none', border:'none', borderBottom: view===v ? '2px solid #185FA5' : '2px solid transparent', color: view===v ? '#185FA5' : '#888', cursor:'pointer' }}>{label}</button>
+          ))}
+        </div>
+
+        {showForm && <TruckForm />}
 
         {loading && <div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading...</div>}
-        {!loading && trucks.length === 0 && !showForm && (
-          <div className="card" style={{ padding:'48px', textAlign:'center', color:'#888' }}>
-            <div style={{ fontSize:14, marginBottom:8 }}>No trucks yet</div>
-            <button className="btn btn-primary" onClick={() => setShowAdd(true)}>Add your first truck</button>
+
+        {/* MY FLEET view */}
+        {!loading && view === 'owned' && (
+          <div>
+            {ownedTrucks.length === 0 && !showForm && <div className="card" style={{ padding:'48px', textAlign:'center', color:'#888' }}><div style={{ fontSize:14, marginBottom:8 }}>No owned trucks yet</div><button className="btn btn-primary" onClick={() => setShowAdd(true)}>Add your first truck</button></div>}
+            {viewMode === 'grid' && <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:12 }}>{ownedTrucks.map(t => <TruckCard key={t.id} truck={t} />)}</div>}
+            {viewMode === 'list' && <ListTable trucks={ownedTrucks} />}
           </div>
         )}
 
-        {/* GRID VIEW */}
-        {viewMode === 'grid' && (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:12 }}>
-            {trucks.map(truck => {
-              const status = truckStatus(truck)
-              const last = lastInspection(truck)
-              const isEditing = editingId === truck.id
-              return (
-                <div key={truck.id} className="card" style={{ padding:'16px', cursor:'pointer', border: isEditing ? '1.5px solid #185FA5' : undefined, transition:'border-color 0.15s' }} onClick={() => !showForm && openTruck(truck)}>
-                  <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
-                    <div>
-                      <div style={{ fontSize:15, fontWeight:600 }}>#{truck.truck_number}</div>
-                      <div style={{ fontSize:13, color:'#555', marginTop:2 }}>{truck.driver_name}</div>
-                    </div>
-                    <span className={`badge ${status.cls}`}>{status.label}</span>
-                  </div>
-                  {(truck.make || truck.model) && <div style={{ fontSize:12, color:'#888', marginBottom:4 }}>{[truck.year, truck.make, truck.model].filter(Boolean).join(' ')}</div>}
-                  {truck.license_plate && <div style={{ fontSize:12, color:'#888', marginBottom:2 }}>Plate: {truck.license_plate}</div>}
-                  {truck.vin && <div style={{ fontSize:11, color:'#aaa', marginBottom:8, fontFamily:'monospace' }}>VIN: {truck.vin}</div>}
-                  <div style={{ fontSize:12, color:'#aaa', marginBottom:12 }}>{last ? `Last inspected: ${new Date(last.created_at).toLocaleDateString()}` : 'No inspections yet'}</div>
-                  <div style={{ display:'flex', gap:6 }} onClick={e => e.stopPropagation()}>
-                    <Link href={`/inspect?truck=${truck.id}`} className="btn" style={{ flex:1, justifyContent:'center', fontSize:12, padding:'6px 10px' }}>Inspect</Link>
-                    <button onClick={() => startEdit(truck)} style={{ padding:'6px 10px', borderRadius:7, border:'0.5px solid rgba(0,0,0,0.15)', background:'transparent', color:'#185FA5', cursor:'pointer', fontSize:12 }}>Edit</button>
-                    <button onClick={() => deleteTruck(truck.id)} style={{ padding:'6px 10px', borderRadius:7, border:'0.5px solid rgba(200,0,0,0.2)', background:'transparent', color:'#A32D2D', cursor:'pointer', fontSize:12 }}>Delete</button>
-                  </div>
-                </div>
-              )
-            })}
+        {/* RENTAL FLEET view */}
+        {!loading && view === 'rental' && (
+          <div>
+            {rentalTrucks.length === 0 && !showForm && (
+              <div className="card" style={{ padding:'48px', textAlign:'center', color:'#888' }}>
+                <div style={{ fontSize:14, marginBottom:4 }}>No rental vehicles</div>
+                <div style={{ fontSize:12, color:'#aaa', marginBottom:16 }}>Add Penske, Ryder, or other rental vehicles here. Run a baseline inspection immediately to document pre-existing damage.</div>
+                <button className="btn btn-primary" onClick={() => { setShowAdd(true); setForm({...emptyForm, fleet_type:'rental'}) }}>Add rental vehicle</button>
+              </div>
+            )}
+            {viewMode === 'grid' && <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:12 }}>{rentalTrucks.map(t => <TruckCard key={t.id} truck={t} />)}</div>}
+            {viewMode === 'list' && <ListTable trucks={rentalTrucks} />}
           </div>
         )}
 
-        {/* LIST VIEW */}
-        {viewMode === 'list' && (
-          <div className="card" style={{ overflow:'hidden' }}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto auto', gap:0, padding:'10px 16px', background:'#f7f7f6', borderBottom:'0.5px solid rgba(0,0,0,0.08)', fontSize:11, fontWeight:500, color:'#888', textTransform:'uppercase', letterSpacing:'0.05em' }}>
-              <span>Truck</span><span>Driver</span><span>Last inspection</span><span>Status</span><span></span>
+        {/* BY CSA view */}
+        {!loading && view === 'csa' && (
+          <div>
+            <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+              <button onClick={() => setCsaFilter('all')} style={{ padding:'5px 14px', borderRadius:20, fontSize:12, fontWeight:500, border: csaFilter==='all' ? '1.5px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: csaFilter==='all' ? '#E6F1FB' : 'white', color: csaFilter==='all' ? '#0C447C' : '#555', cursor:'pointer' }}>All CSAs</button>
+              {csaList.map(csa => <button key={csa} onClick={() => setCsaFilter(csa)} style={{ padding:'5px 14px', borderRadius:20, fontSize:12, fontWeight:500, border: csaFilter===csa ? '1.5px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: csaFilter===csa ? '#E6F1FB' : 'white', color: csaFilter===csa ? '#0C447C' : '#555', cursor:'pointer' }}>{csa}</button>)}
             </div>
-            {trucks.map((truck, i) => {
-              const status = truckStatus(truck)
-              const last = lastInspection(truck)
-              return (
-                <div key={truck.id} style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto auto', gap:0, padding:'12px 16px', borderBottom: i < trucks.length-1 ? '0.5px solid rgba(0,0,0,0.07)' : 'none', alignItems:'center', cursor:'pointer', background:'white', transition:'background 0.1s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background='#f9f9f8')}
-                  onMouseLeave={e => (e.currentTarget.style.background='white')}
-                  onClick={() => openTruck(truck)}>
-                  <div>
-                    <div style={{ fontSize:13, fontWeight:600 }}>#{truck.truck_number}</div>
-                    {truck.vin && <div style={{ fontSize:11, color:'#aaa', fontFamily:'monospace' }}>{truck.vin}</div>}
-                  {truck.vehicle_type && <div style={{ fontSize:10, color:'#888', marginTop:2 }}>{truck.vehicle_type==='sprinter'?'Sprinter Van':truck.vehicle_type==='stepvan'?'Step Van':truck.vehicle_type==='boxtruck'?'Box Truck':'Other'}</div>}
+            {csaFilter === 'all' ? (
+              <div>
+                {Object.entries(csaGroups).map(([csa, csaTrucks]) => (
+                  <div key={csa} style={{ marginBottom:24 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:'#185FA5', marginBottom:10, display:'flex', alignItems:'center', gap:8 }}>
+                      <span>📍 {csa}</span>
+                      <span style={{ fontSize:11, color:'#888', fontWeight:400 }}>{csaTrucks.length} vehicle{csaTrucks.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:10 }}>{csaTrucks.map(t => <TruckCard key={t.id} truck={t} />)}</div>
                   </div>
-                  <div style={{ fontSize:13, color:'#555' }}>{truck.driver_name}</div>
-                  <div style={{ fontSize:12, color:'#888' }}>{last ? new Date(last.created_at).toLocaleDateString() : 'Never'}</div>
-                  <span className={`badge ${status.cls}`}>{status.label}</span>
-                  <div style={{ display:'flex', gap:4, marginLeft:8 }} onClick={e => e.stopPropagation()}>
-                    <Link href={`/inspect?truck=${truck.id}`} className="btn" style={{ fontSize:11, padding:'4px 10px' }}>Inspect</Link>
-                    <button onClick={() => startEdit(truck)} style={{ padding:'4px 10px', borderRadius:6, border:'0.5px solid rgba(0,0,0,0.15)', background:'transparent', color:'#185FA5', cursor:'pointer', fontSize:11 }}>Edit</button>
+                ))}
+                {noCsaTrucks.length > 0 && (
+                  <div style={{ marginBottom:24 }}>
+                    <div style={{ fontSize:13, fontWeight:600, color:'#888', marginBottom:10 }}>No CSA assigned <span style={{ fontSize:11, fontWeight:400 }}>({noCsaTrucks.length} vehicle{noCsaTrucks.length !== 1 ? 's' : ''})</span></div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:10 }}>{noCsaTrucks.map(t => <TruckCard key={t.id} truck={t} />)}</div>
                   </div>
-                </div>
-              )
-            })}
+                )}
+                {csaList.length === 0 && <div className="card" style={{ padding:'32px', textAlign:'center', color:'#888', fontSize:13 }}>No CSA locations set yet. Edit your trucks and add a CSA to organize by location.</div>}
+              </div>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:12 }}>{filteredByCsa.map(t => <TruckCard key={t.id} truck={t} />)}</div>
+            )}
           </div>
         )}
       </div>
     </div>
   )
+
+  function ListTable({ trucks }: { trucks: any[] }) {
+    return (
+      <div className="card" style={{ overflow:'hidden' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto auto', padding:'10px 16px', background:'#f7f7f6', borderBottom:'0.5px solid rgba(0,0,0,0.08)', fontSize:11, fontWeight:500, color:'#888', textTransform:'uppercase', letterSpacing:'0.05em' }}>
+          <span>Truck</span><span>Driver</span><span>CSA / Last inspected</span><span>Status</span><span></span>
+        </div>
+        {trucks.map((truck, i) => {
+          const status = truckStatus(truck)
+          const last = lastInspection(truck)
+          return (
+            <div key={truck.id} style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto auto', padding:'12px 16px', borderBottom: i < trucks.length-1 ? '0.5px solid rgba(0,0,0,0.07)' : 'none', alignItems:'center', cursor:'pointer', background:'white', transition:'background 0.1s' }}
+              onMouseEnter={e => (e.currentTarget.style.background='#f9f9f8')}
+              onMouseLeave={e => (e.currentTarget.style.background='white')}
+              onClick={() => openTruck(truck)}>
+              <div>
+                <div style={{ fontSize:13, fontWeight:600 }}>#{truck.truck_number} {truck.fleet_type==='rental' && <span style={{ fontSize:10, background:'#FAEEDA', color:'#633806', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>Rental</span>}</div>
+                {truck.vin && <div style={{ fontSize:11, color:'#aaa', fontFamily:'monospace' }}>{truck.vin}</div>}
+              </div>
+              <div style={{ fontSize:13, color:'#555' }}>{truck.driver_name}</div>
+              <div style={{ fontSize:12, color:'#888' }}>{truck.csa && <span style={{ color:'#185FA5' }}>{truck.csa} · </span>}{last ? new Date(last.created_at).toLocaleDateString() : 'Never'}</div>
+              <span className={`badge ${status.cls}`}>{status.label}</span>
+              <div style={{ display:'flex', gap:4, marginLeft:8 }} onClick={e => e.stopPropagation()}>
+                <Link href={`/inspect?truck=${truck.id}`} className="btn" style={{ fontSize:11, padding:'4px 10px' }}>Inspect</Link>
+                <button onClick={() => startEdit(truck)} style={{ padding:'4px 10px', borderRadius:6, border:'0.5px solid rgba(0,0,0,0.15)', background:'transparent', color:'#185FA5', cursor:'pointer', fontSize:11 }}>Edit</button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
 }
