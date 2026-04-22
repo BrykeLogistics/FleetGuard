@@ -235,9 +235,24 @@ export default function FleetPage() {
                   <div key={d.id} style={{ display:'flex', gap:8, padding:'10px 0', borderBottom:'0.5px solid rgba(0,0,0,0.07)' }}>
                     <div style={{ width:8, height:8, borderRadius:'50%', background:sevDot(d.severity), marginTop:4, flexShrink:0 }} />
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:13, fontWeight:500 }}>{d.location} {d.is_new && <span style={{ fontSize:10, background:'#FCEBEB', color:'#A32D2D', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>NEW</span>}</div>
+                      <div style={{ fontSize:13, fontWeight:500 }}>
+                        {d.location}
+                        {d.is_new && <span style={{ fontSize:10, background:'#FCEBEB', color:'#A32D2D', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>NEW</span>}
+                        {d.diy_replaceable && <span style={{ fontSize:10, background:'#EAF3DE', color:'#27500A', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>DIY</span>}
+                      </div>
                       <div style={{ fontSize:11, color:'#555', marginTop:2 }}>{d.description}</div>
                       {d.recommendation && <div style={{ fontSize:11, color:'#185FA5', marginTop:2 }}>→ {d.recommendation}</div>}
+                      {(d.repair_estimate_low > 0 || d.repair_estimate_high > 0) && (
+                        <div style={{ fontSize:11, color:'#633806', marginTop:3, fontWeight:500 }}>Est: ${d.repair_estimate_low?.toLocaleString()} – ${d.repair_estimate_high?.toLocaleString()}{d.repair_estimate_notes ? ` · ${d.repair_estimate_notes}` : ''}</div>
+                      )}
+                      {d.diy_replaceable && d.part_search_query && (
+                        <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:5 }}>
+                          <span style={{ fontSize:10, color:'#888' }}>Parts:</span>
+                          {[{name:'Amazon',url:`https://www.amazon.com/s?k=${encodeURIComponent(d.part_search_query)}&i=automotive`},{name:'RockAuto',url:`https://www.rockauto.com/en/partsgroup/${encodeURIComponent(d.part_search_query.split(' ').slice(0,4).join('+'))}`},{name:'eBay Motors',url:`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(d.part_search_query)}&_sacat=6000`}].map(link => (
+                            <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, fontWeight:500, color:'#185FA5', background:'#E6F1FB', padding:'2px 7px', borderRadius:20, textDecoration:'none' }}>{link.name} →</a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
