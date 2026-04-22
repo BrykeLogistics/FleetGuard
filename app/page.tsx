@@ -16,7 +16,7 @@ export default function Dashboard() {
     if (!user) return
     const [trucksRes, inspRes, damageRes] = await Promise.all([
       supabase.from('trucks').select('*').eq('user_id', user.id),
-      supabase.from('inspections').select('*, trucks(truck_number, driver_name)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10),
+      supabase.from('inspections').select('*, trucks(id, truck_number, driver_name)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10),
       supabase.from('damages').select('*').eq('user_id', user.id).eq('is_new', true),
     ])
     const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
@@ -51,14 +51,18 @@ export default function Dashboard() {
             <div style={{ textAlign:'center', padding:'40px 0', color:'#888', fontSize:13 }}>No inspections yet. <Link href="/inspect" style={{ color:'#185FA5' }}>Run your first inspection →</Link></div>
           )}
           {recentInspections.map(insp => (
-            <div key={insp.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'0.5px solid rgba(0,0,0,0.07)' }}>
+            <Link key={insp.id} href={`/fleet?truck=${(insp.trucks as any)?.id}`}
+              style={{ display:'flex', alignItems:'center', gap:12, borderBottom:'0.5px solid rgba(0,0,0,0.07)', textDecoration:'none', color:'inherit', cursor:'pointer', borderRadius:4, transition:'background 0.1s', margin:'0 -8px', padding:'10px 8px' }}
+              onMouseEnter={e => (e.currentTarget.style.background='#f7f7f6')}
+              onMouseLeave={e => (e.currentTarget.style.background='transparent')}>
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:13, fontWeight:500 }}>Truck #{(insp.trucks as any)?.truck_number} — {(insp.trucks as any)?.driver_name}</div>
                 <div style={{ fontSize:12, color:'#888', marginTop:2 }}>{insp.inspection_type} · {insp.inspector_name} · {new Date(insp.created_at).toLocaleDateString()}</div>
               </div>
               <span className={`badge ${condBadge(insp.overall_condition)}`}>{insp.overall_condition || 'Pending'}</span>
               {insp.follow_up_required && <span className="badge badge-red" style={{ marginLeft:4 }}>Follow-up</span>}
-            </div>
+              <span style={{ fontSize:12, color:'#aaa' }}>→</span>
+            </Link>
           ))}
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
