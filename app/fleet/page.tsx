@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
 import DamageFeedback from '../components/DamageFeedback'
+import PhotoLightbox from '../components/PhotoLightbox'
 
 const emptyForm = { truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'', vehicle_type:'', csa:'', fleet_type:'owned', rental_company:'', rental_contract:'', rental_start:'', rental_end:'' }
 
@@ -180,6 +181,7 @@ export default function FleetPage() {
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [photoUrls, setPhotoUrls] = useState<{[key:string]:string}>({})
   const [csaFilter, setCsaFilter] = useState('all')
+  const [lightboxIndex, setLightboxIndex] = useState<number|null>(null)
 
   useEffect(() => { loadTrucks() }, [])
 
@@ -342,12 +344,23 @@ export default function FleetPage() {
                 <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Photos ({photos.length})</div>
                 {photos.length === 0 ? <div style={{ color:'#aaa', fontSize:13, padding:'20px 0', textAlign:'center' }}>No photos yet</div> : (
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px,1fr))', gap:8 }}>
-                    {photos.map(p => (
+                    {photos.map((p, i) => (
                       <div key={p.id}>
-                        {photoUrls[p.id] ? <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', cursor:'pointer' }} onClick={() => window.open(photoUrls[p.id], '_blank')} /> : <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>}
+                        {photoUrls[p.id]
+                          ? <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', cursor:'pointer' }} onClick={() => setLightboxIndex(i)} />
+                          : <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>}
                         <div style={{ fontSize:10, color:'#aaa', marginTop:3, textAlign:'center' }}>{new Date(p.created_at).toLocaleDateString()}</div>
                       </div>
                     ))}
+                    {lightboxIndex !== null && (
+                      <PhotoLightbox
+                        photos={photos.map((p, i) => ({ url: photoUrls[p.id] || '', date: new Date(p.created_at).toLocaleDateString(), label: `Photo ${i+1}` }))}
+                        index={lightboxIndex}
+                        onClose={() => setLightboxIndex(null)}
+                        onNext={() => setLightboxIndex(i => i !== null && i < photos.length - 1 ? i + 1 : i)}
+                        onPrev={() => setLightboxIndex(i => i !== null && i > 0 ? i - 1 : i)}
+                      />
+                    )}
                   </div>
                 )}
               </div>
