@@ -34,11 +34,19 @@ export default function Dashboard() {
       <Navbar />
       <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px' }}>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px,1fr))', gap:12, marginBottom:20 }}>
-          {[{label:'Total trucks',value:stats.total,color:'#1a1a1a'},{label:'Inspected this week',value:stats.inspectedThisWeek,color:'#27500A'},{label:'New damage found',value:stats.newDamage,color:'#A32D2D'},{label:'Not yet inspected',value:stats.pending,color:'#633806'}].map(s => (
-            <div key={s.label} style={{ background:'white', borderRadius:10, padding:'16px', border:'0.5px solid rgba(0,0,0,0.08)' }}>
+          {[
+            { label:'Total trucks', value:stats.total, color:'#1a1a1a', href:'/fleet' },
+            { label:'Inspected this week', value:stats.inspectedThisWeek, color:'#27500A', href:'/reports?filter=this-week' },
+            { label:'New damage found', value:stats.newDamage, color:'#A32D2D', href:'/reports?filter=new-damage' },
+            { label:'Not yet inspected', value:stats.pending, color:'#633806', href:'/fleet?filter=uninspected' },
+          ].map(s => (
+            <Link key={s.label} href={s.href} style={{ background:'white', borderRadius:10, padding:'16px', border:'0.5px solid rgba(0,0,0,0.08)', textDecoration:'none', color:'inherit', display:'block', transition:'box-shadow 0.15s, transform 0.15s', cursor:'pointer' }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow='0 2px 12px rgba(0,0,0,0.1)'; e.currentTarget.style.transform='translateY(-1px)' }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow='none'; e.currentTarget.style.transform='none' }}>
               <div style={{ fontSize:12, color:'#888', marginBottom:6 }}>{s.label}</div>
               <div style={{ fontSize:28, fontWeight:600, color: loading ? '#ddd' : s.color }}>{loading ? '—' : s.value}</div>
-            </div>
+              <div style={{ fontSize:11, color:'#aaa', marginTop:4 }}>View →</div>
+            </Link>
           ))}
         </div>
         <div className="card" style={{ padding:'20px', marginBottom:16 }}>
