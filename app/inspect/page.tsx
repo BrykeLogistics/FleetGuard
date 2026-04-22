@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import GuidedCapture from '../components/GuidedCapture'
+import DamageFeedback from '../components/DamageFeedback'
 import Link from 'next/link'
 
 function InspectContent() {
@@ -45,6 +46,7 @@ function InspectContent() {
   const [result, setResult] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [savedInspectionId, setSavedInspectionId] = useState('')
   const [error, setError] = useState('')
   const [showGuided, setShowGuided] = useState(false)
 
@@ -328,6 +330,7 @@ function InspectContent() {
 
     setSaving(false)
     setSaved(true)
+    if (insp) setSavedInspectionId(insp.id)
   }
 
   const condColor = (c: string) => c === 'Good' ? '#27500A' : (c === 'Critical' || c === 'Poor') ? '#A32D2D' : '#633806'
@@ -684,6 +687,14 @@ function InspectContent() {
               )}
             </div>
 
+            {saved && savedInspectionId && (
+              <DamageFeedback
+                inspectionId={savedInspectionId}
+                truckId={selectedTruck}
+                onSubmitted={() => {}}
+              />
+            )}
+
             <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
               {!saved ? (
                 <button className="btn btn-primary" onClick={saveInspection} disabled={saving}>
@@ -693,7 +704,7 @@ function InspectContent() {
                 <div style={{ padding:'8px 16px', background:'#EAF3DE', color:'#27500A', borderRadius:8, fontSize:13, fontWeight:500 }}>✓ Saved to fleet record</div>
               )}
               <Link href="/" className="btn">Back to dashboard</Link>
-              <button className="btn" onClick={() => { setStep(1); setResult(null); setFiles([]); setPreviews([]); setVideoFile(null); setVideoUrl(''); setExtractedFrames([]); setSaved(false) }}>New inspection</button>
+              <button className="btn" onClick={() => { setStep(1); setResult(null); setFiles([]); setPreviews([]); setVideoFile(null); setVideoUrl(''); setExtractedFrames([]); setSaved(false); setSavedInspectionId('') }}>New inspection</button>
             </div>
           </div>
         )}
