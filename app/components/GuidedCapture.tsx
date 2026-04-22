@@ -399,7 +399,7 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
       {cameraError && (
         <div style={{ padding:24, textAlign:'center', background:'#1 a 1 a 1 a' }}>
           <div style={{ color:'#F09595', fontSize:14, marginBottom:16 }}>{cameraError}</div>
-          <button onClick={requestCamera} style={{ padding:'10px 20px', background:'#185F A ', color:'white', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Try again</button>
+          <button onClick={requestCamera} style={{ padding:'10px 20px', background:'#185FA5', color:'white', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Try again</button>
         </div>
       )}
 
@@ -412,10 +412,10 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
             {stencil.paths.map((p, i) => <path key={i} d={p.d} style={p.style} />)}
           </svg>
 
-          <div style={{ position:'absolute', inset:0, background:'r a di a l -gr a dien t (e l l ip s e a t c en t er, t r a n s p a ren t 40%, rgb a (0,0,0,0.45) 100%)', pointerEvents:'none' }} />
+          <div style={{ position:'absolute', inset:0, background:'radial-gradient (e l l ip s e a t c en t er, t r a n s p a ren t 40%, rgba(0,0,0,0.45) 100%)', pointerEvents:'none' }} />
 
           {!videoPlaying && (
-            <div onClick={tapToStart} style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgb a (0,0,0,0.7)', cursor:'pointer', zIndex:10 }}>
+            <div onClick={tapToStart} style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.7)', cursor:'pointer', zIndex:10 }}>
               <div style={{ fontSize:48, marginBottom:12 }}>📷</div>
               <div style={{ fontSize:16, fontWeight:600, color:'white', marginBottom:6 }}>Tap to start camera</div>
               <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)' }}>Tap anywhere to activate</div>
@@ -423,33 +423,33 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
           )}
 
           <div style={{ position:'absolute', top:12, left:0, right:0, display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-            <div style={{ background:'rgb a (0,0,0,0.6)', color:'white', padding:'5px 14px', borderRadius:20, fontSize:14, fontWeight:600 }}>
+            <div style={{ background:'rgba(0,0,0,0.6)', color:'white', padding:'5px 14px', borderRadius:20, fontSize:14, fontWeight:600 }}>
               {shot.icon} {shot.label}
             </div>
-            <div style={{ background:'rgb a (0,0,0,0.45)', color:'rgba(255,255,255,0.75)', padding:'3px 12px', borderRadius:16, fontSize:11 }}>
+            <div style={{ background:'rgba(0,0,0,0.45)', color:'rgba(255,255,255,0.75)', padding:'3px 12px', borderRadius:16, fontSize:11 }}>
               {currentShot + 1} of {SHOTS.length} · {vehicleLabel} · align to outline
             </div>
           </div>
 
           {countdown !== null && (
-            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgb a (0,0,0,0.35)', pointerEvents:'none' }}>
+            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.35)', pointerEvents:'none' }}>
               <div style={{ fontSize:96, fontWeight:800, color:'white', lineHeight:1 }}>{countdown}</div>
             </div>
           )}
 
-          <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:'rgb a (255,255,255,0.15)' }}>
-            <div style={{ height:'100%', background:'#185F A ', width:`${progress}%`, transition:'width 0.3s' }} />
+          <div style={{ position:'absolute', top:0, left:0, right:0, height:3, background:'rgba(255,255,255,0.15)' }}>
+            <div style={{ height:'100%', background:'#185FA5', width:`${progress}%`, transition:'width 0.3s' }} />
           </div>
 
           <div style={{ position:'absolute', bottom:16, left:0, right:0, display:'flex', alignItems:'center', justifyContent:'center', gap:20 }}>
-            <button onClick={finishEarly} style={{ padding:'9px 16px', background:'rgb a (255,255,255,0.15)', color:'white', border:'none', borderRadius:10, fontSize:12, cursor:'pointer' }}>
+            <button onClick={finishEarly} style={{ padding:'9px 16px', background:'rgba(255,255,255,0.15)', color:'white', border:'none', borderRadius:10, fontSize:12, cursor:'pointer' }}>
               {captured.length > 0 ? `Finish (${captured.length})` : 'Cancel'}
             </button>
             <button onClick={capturePhoto} disabled={countdown !== null}
-              style={{ width:70, height:70, borderRadius:'50%', background:'w h i t e', border:'4px solid rgba(255,255,255,0.5)', cursor:'pointer', padding:0, display:'flex', alignItems:'center', justifyContent:'center', opacity: countdown !== null ? 0.6 : 1 }}>
-              <div style={{ width:52, height:52, borderRadius:'50%', background:'w h i t e', border:'3px solid #185FA5' }} />
+              style={{ width:70, height:70, borderRadius:'50%', background:'white', border:'4px solid rgba(255,255,255,0.5)', cursor:'pointer', padding:0, display:'flex', alignItems:'center', justifyContent:'center', opacity: countdown !== null ? 0.6 : 1 }}>
+              <div style={{ width:52, height:52, borderRadius:'50%', background:'white', border:'3px solid #185FA5' }} />
             </button>
-            <button onClick={skipShot} style={{ padding:'9px 16px', background:'rgb a (255,255,255,0.15)', color:'white', border:'none', borderRadius:10, fontSize:12, cursor:'pointer' }}>Skip</button>
+            <button onClick={skipShot} style={{ padding:'9px 16px', background:'rgba(255,255,255,0.15)', color:'white', border:'none', borderRadius:10, fontSize:12, cursor:'pointer' }}>Skip</button>
           </div>
         </div>
       )}
@@ -457,11 +457,11 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
       {mode === 'review' && lastDataUrl && (
         <div style={{ position:'relative', width:'100%', aspectRatio:'4/3' }}>
           <img src={lastDataUrl} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
-          <div style={{ position:'absolute', inset:0, background:'rgb a (0,0,0,0.45)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-end', padding:24, gap:12 }}>
+          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-end', padding:24, gap:12 }}>
             <div style={{ fontSize:15, fontWeight:600, color:'white' }}>Use this photo?</div>
             <div style={{ display:'flex', gap:12 }}>
-              <button onClick={retakePhoto} style={{ padding:'11px 22px', background:'rgb a (255,255,255,0.2)', color:'white', border:'none', borderRadius:10, fontSize:14, cursor:'pointer' }}>Retake</button>
-              <button onClick={acceptPhoto} style={{ padding:'11px 26px', background:'#185F A ', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>
+              <button onClick={retakePhoto} style={{ padding:'11px 22px', background:'rgba(255,255,255,0.2)', color:'white', border:'none', borderRadius:10, fontSize:14, cursor:'pointer' }}>Retake</button>
+              <button onClick={acceptPhoto} style={{ padding:'11px 26px', background:'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>
                 {currentShot < SHOTS.length - 1 ? `Next: ${SHOTS[currentShot + 1].label} →` : 'Finish ✓'}
               </button>
             </div>
