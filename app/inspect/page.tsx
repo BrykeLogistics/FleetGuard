@@ -298,14 +298,24 @@ function InspectContent() {
         )
       }
 
-      // Save extracted frames as photos
+      // Save photos — convert base64 directly to blob (avoids Android blob URL expiry issues)
       const framesToSave = uploadMode === 'video' ? extractedFrames : previews
       for (let i = 0; i < Math.min(framesToSave.length, 8); i++) {
-        const base64 = framesToSave[i].split(',')[1]
-        const blob = await (await fetch(framesToSave[i])).blob()
-        const path = `${user.id}/${selectedTruck}/${insp.id}/frame_${i}.jpg`
-        await supabase.storage.from('inspection-photos').upload(path, blob)
-        await supabase.from('inspection_photos').insert({ inspection_id: insp.id, truck_id: selectedTruck, storage_path: path, photo_type: uploadMode === 'video' ? 'video_frame' : 'photo', user_id: user.id })
+        try {
+          const dataUrl = framesToSave[i]
+          const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl
+          const byteChars = atob(base64)
+          const byteArr = new Uint8Array(byteChars.length)
+          for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j)
+          const blob = new Blob([byteArr], { type: 'image/jpeg' })
+          const path = `${user.id}/${selectedTruck}/${insp.id}/photo_${i}.jpg`
+          const { error: uploadError } = await supabase.storage.from('inspection-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true })
+          if (!uploadError) {
+            await supabase.from('inspection_photos').insert({ inspection_id: insp.id, truck_id: selectedTruck, storage_path: path, photo_type: uploadMode === 'video' ? 'video_frame' : 'photo', user_id: user.id })
+          }
+        } catch (photoErr) {
+          console.error('Photo upload error:', photoErr)
+        }
       }
     }
 
