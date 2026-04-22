@@ -1,5 +1,6 @@
 'use client'
 import { useRef, useState, useEffect } from 'react'
+import { analyzePhotoQuality } from './PhotoQuality'
 
 const SHOTS = [
   { id: 'front',        label: 'Front',                      icon: '⬆', desc: 'Stand 10–15 ft away, centered on the front grille' },
@@ -297,6 +298,8 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
   const [cameraError, setCameraError] = useState('')
   const [videoPlaying, setVideoPlaying] = useState(false)
   const [lastDataUrl, setLastDataUrl] = useState('')
+  const [qualityResult, setQualityResult] = useState<any>(null)
+  const [checkingQuality, setCheckingQuality] = useState(false)
   const streamRef = useRef<MediaStream|null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -351,11 +354,11 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
     }
   }
 
-  function capturePhoto() {
+  async function capturePhoto() {
     if (!videoRef.current || !canvasRef.current || countdown !== null) return
     setCountdown(3)
     let c = 3
-    const t = setInterval(() => {
+    const t = setInterval(async () => {
       c--
       setCountdown(c > 0 ? c : null)
       if (c <= 0) {
@@ -367,12 +370,18 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
         canvas.getContext('2d')!.drawImage(video, 0, 0)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
         setLastDataUrl(dataUrl)
+        setCheckingQuality(true)
         setMode('review')
+        // Check quality after showing preview
+        const quality = await analyzePhotoQuality(dataUrl)
+        setQualityResult(quality)
+        setCheckingQuality(false)
       }
     }, 1000)
   }
 
   function acceptPhoto() {
+    setQualityResult(null)
     const newCapture = { shotId: shot.id, label: shot.label, dataUrl: lastDataUrl }
     const newCaptured = [...captured, newCapture]
     setCaptured(newCaptured)
@@ -380,7 +389,7 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
     else onComplete(newCaptured)
   }
 
-  function retakePhoto() { setLastDataUrl(''); setMode('camera') }
+  function retakePhoto() { setLastDataUrl(''); setQualityResult(null); setMode('camera') }
 
   function skipShot() {
     if (currentShot < SHOTS.length - 1) { setCurrentShot(prev => prev + 1); setMode('camera') }
@@ -457,15 +466,44 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
       {mode === 'review' && lastDataUrl && (
         <div style={{ position:'relative', width:'100%', aspectRatio:'4/3' }}>
           <img src={lastDataUrl} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
-          <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-end', padding:24, gap:12 }}>
-            <div style={{ fontSize:15, fontWeight:600, color:'white' }}>Use this photo?</div>
-            <div style={{ display:'flex', gap:12 }}>
-              <button onClick={retakePhoto} style={{ padding:'11px 22px', background:'rgba(255,255,255,0.2)', color:'white', border:'none', borderRadius:10, fontSize:14, cursor:'pointer' }}>Retake</button>
-              <button onClick={acceptPhoto} style={{ padding:'11px 26px', background:'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>
-                {currentShot < SHOTS.length - 1 ? `Next: ${SHOTS[currentShot + 1].label} →` : 'Finish ✓'}
-              </button>
+
+          {/* Quality checking overlay */}
+          {checkingQuality && (
+            <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.6)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
+              <div style={{ width:28, height:28, border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', borderRadius:'50%', animation:'spin 0.8s linear infinite', marginBottom:10 }} />
+              <div style={{ color:'white', fontSize:13 }}>Checking photo quality...</div>
             </div>
-          </div>
+          )}
+
+          {/* Quality FAILED overlay — auto prompt retake */}
+          {!checkingQuality && qualityResult && !qualityResult.passed && (
+            <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.75)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:24, textAlign:'center' }}>
+              <div style={{ fontSize:36, marginBottom:12 }}>⚠️</div>
+              <div style={{ fontSize:16, fontWeight:700, color:'white', marginBottom:8 }}>Photo quality issue</div>
+              <div style={{ fontSize:13, color:'rgba(255,255,255,0.85)', marginBottom:6, lineHeight:1.5 }}>{qualityResult.issues.join(' · ')}</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', marginBottom:20, lineHeight:1.5, maxWidth:260 }}>{qualityResult.suggestion}</div>
+              <div style={{ display:'flex', gap:10 }}>
+                <button onClick={retakePhoto} style={{ padding:'12px 28px', background:'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>Retake photo</button>
+                <button onClick={acceptPhoto} style={{ padding:'12px 18px', background:'rgba(255,255,255,0.15)', color:'white', border:'none', borderRadius:10, fontSize:13, cursor:'pointer' }}>Use anyway</button>
+              </div>
+            </div>
+          )}
+
+          {/* Quality PASSED — normal review */}
+          {!checkingQuality && (!qualityResult || qualityResult.passed) && (
+            <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,0.35)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-end', padding:20, gap:10 }}>
+              {qualityResult?.passed && (
+                <div style={{ background:'rgba(39,80,10,0.85)', color:'white', padding:'5px 14px', borderRadius:20, fontSize:12, fontWeight:500 }}>✓ Photo quality good</div>
+              )}
+              <div style={{ fontSize:15, fontWeight:600, color:'white' }}>Use this photo?</div>
+              <div style={{ display:'flex', gap:12 }}>
+                <button onClick={retakePhoto} style={{ padding:'11px 22px', background:'rgba(255,255,255,0.2)', color:'white', border:'none', borderRadius:10, fontSize:14, cursor:'pointer' }}>Retake</button>
+                <button onClick={acceptPhoto} style={{ padding:'11px 26px', background:'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:14, fontWeight:600, cursor:'pointer' }}>
+                  {currentShot < SHOTS.length - 1 ? `Next: ${SHOTS[currentShot + 1].label} →` : 'Finish ✓'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
