@@ -14,9 +14,15 @@ function ReportsContent() {
   const [inspections, setInspections] = useState<any[]>([])
   const [damages, setDamages] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [activeFilter, setActiveFilter] = useState<string|null>(null)
 
   useEffect(() => { loadTrucks() }, [])
   useEffect(() => { if (selectedTruck) loadReport() }, [selectedTruck])
+
+  useEffect(() => {
+    const filter = searchParams.get('filter')
+    if (filter) setActiveFilter(filter)
+  }, [])
 
   async function loadTrucks() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -66,9 +72,16 @@ function ReportsContent() {
   }
 
   const truck = trucks.find(t => t.id === selectedTruck)
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
   const newDamages = damages.filter(d => d.is_new)
   const allDamages = damages.filter(d => !d.is_new)
+  // Dashboard filter: new-damage shows only new damages, this-week filters by date
+  const displayedNewDamages = activeFilter === 'new-damage' ? newDamages : newDamages
+  const displayedInspections = activeFilter === 'this-week'
+    ? inspections.filter((i: any) => new Date(i.created_at) > weekAgo)
+    : inspections
   const sevColor = (s: string) => s === 'critical' ? '#E24B4A' : s === 'moderate' ? '#EF9F27' : '#639922'
+  // Apply filters from URL params
   const condBadge = (c: string) => c === 'Good' ? 'badge-green' : (c === 'Critical' || c === 'Poor') ? 'badge-red' : c === 'Fair' ? 'badge-amber' : 'badge-gray'
 
   return (
