@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
+import DamageFeedback from '../components/DamageFeedback'
 
 const emptyForm = { truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'', vehicle_type:'', csa:'', fleet_type:'owned', rental_company:'', rental_contract:'', rental_start:'', rental_end:'' }
 
@@ -222,6 +223,7 @@ export default function FleetPage() {
                       <div style={{ fontSize:13, fontWeight:500 }}>{insp.inspection_type} {insp.is_baseline && <span style={{ fontSize:10, background:'#E6F1FB', color:'#0C447C', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>baseline</span>}</div>
                       <div style={{ fontSize:11, color:'#888', marginTop:2 }}>{new Date(insp.created_at).toLocaleDateString()} · {insp.inspector_name}</div>
                       {insp.summary && <div style={{ fontSize:11, color:'#555', marginTop:3, lineHeight:1.5 }}>{insp.summary}</div>}
+                    <DamageFeedback inspectionId={insp.id} truckId={selectedTruck.id} onSubmitted={loadTrucks} />
                     </div>
                     <span className={`badge ${condBadge(insp.overall_condition)}`} style={{ flexShrink:0 }}>{insp.overall_condition}</span>
                   </div>
