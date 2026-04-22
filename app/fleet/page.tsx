@@ -185,6 +185,7 @@ export default function FleetPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number|null>(null)
 
   const searchParams = useSearchParams()
+  const [uninspectedOnly, setUninspectedOnly] = useState(false)
   useEffect(() => { loadTrucks() }, [])
 
   async function loadTrucks() {
@@ -198,6 +199,10 @@ export default function FleetPage() {
     if (truckId && data) {
       const truck = data.find((t: any) => t.id === truckId)
       if (truck) openTruck(truck)
+    }
+    // Auto-filter uninspected if ?filter=uninspected
+    if (searchParams.get('filter') === 'uninspected') {
+      setUninspectedOnly(true)
     }
   }
 
@@ -290,8 +295,9 @@ export default function FleetPage() {
   }
 
   const csaList = Array.from(new Set(trucks.filter(t => t.csa).map(t => t.csa))).sort() as string[]
-  const ownedTrucks = trucks.filter(t => (t.fleet_type || 'owned') === 'owned')
-  const rentalTrucks = trucks.filter(t => t.fleet_type === 'rental')
+  const isUninspected = (t: any) => !t.inspections || t.inspections.length === 0
+  const ownedTrucks = trucks.filter(t => (t.fleet_type || 'owned') === 'owned' && (!uninspectedOnly || isUninspected(t)))
+  const rentalTrucks = trucks.filter(t => t.fleet_type === 'rental' && (!uninspectedOnly || isUninspected(t)))
   const filteredByCsa = csaFilter === 'all' ? trucks : trucks.filter(t => t.csa === csaFilter)
   const csaGroups: Record<string, any[]> = csaList.reduce((acc: Record<string, any[]>, csa: string) => { acc[csa] = trucks.filter((t: any) => t.csa === csa); return acc }, {})
   const noCsaTrucks = trucks.filter(t => !t.csa)
@@ -452,6 +458,12 @@ export default function FleetPage() {
           ))}
         </div>
 
+        {uninspectedOnly && (
+          <div style={{ background:'#FAEEDA', borderRadius:8, padding:'10px 14px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ fontSize:13, color:'#633806', fontWeight:500 }}>⚠ Showing only trucks not yet inspected</div>
+            <button onClick={() => setUninspectedOnly(false)} style={{ background:'none', border:'none', color:'#854F0B', cursor:'pointer', fontSize:12, textDecoration:'underline' }}>Show all</button>
+          </div>
+        )}
         {showForm && <TruckForm {...formProps} />}
         {loading && <div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading...</div>}
 
