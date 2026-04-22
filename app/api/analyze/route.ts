@@ -36,6 +36,23 @@ INSPECTION TYPE: ${inspectionType}
 INSPECTOR: ${inspector}
 NOTES: ${notes || 'None'}${baselineText}
 
+CRITICAL — SIDE ORIENTATION (USA vehicles, must follow exactly):
+All vehicles are USA spec. The DRIVER sits on the LEFT side of the vehicle.
+- DRIVER SIDE = LEFT side of the vehicle when standing at the front looking toward the rear
+- PASSENGER SIDE = RIGHT side of the vehicle when standing at the front looking toward the rear
+
+When analyzing photos, orient yourself as follows:
+- FRONT photo: driver side is on YOUR LEFT, passenger side is on YOUR RIGHT
+- REAR photo: driver side is on YOUR RIGHT (it flips when looking from behind), passenger side is on YOUR LEFT
+- DRIVER SIDE photo: you are looking at the LEFT side of the vehicle
+- PASSENGER SIDE photo: you are looking at the RIGHT side of the vehicle
+- FRONT-LEFT corner photo: this is the DRIVER SIDE front corner
+- FRONT-RIGHT corner photo: this is the PASSENGER SIDE front corner
+- REAR-LEFT corner photo: this is the DRIVER SIDE rear corner (when shot from behind, left in frame = driver side)
+- REAR-RIGHT corner photo: this is the PASSENGER SIDE rear corner
+
+Always use "driver side" or "passenger side" in damage locations — never use "left" or "right" alone as these are ambiguous depending on viewing angle.
+
 ${hasBaseline
   ? 'COMPARISON MODE: Compare carefully against the documented baseline damage above. Mark is_new: true ONLY for damage NOT previously documented. Even small changes in existing damage (e.g. a scratch that has grown, a dent that has deepened) should be flagged as new.'
   : 'BASELINE MODE: This is the initial condition documentation. Capture EVERYTHING visible. This is the legal baseline all future inspections will compare against.'}
