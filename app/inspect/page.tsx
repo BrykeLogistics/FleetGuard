@@ -295,6 +295,12 @@ function InspectContent() {
             severity: d.severity, location: d.location,
             description: d.description, recommendation: d.recommendation || '',
             is_new: d.is_new, user_id: user.id,
+            repair_estimate_low: d.repairEstimate?.low || 0,
+            repair_estimate_high: d.repairEstimate?.high || 0,
+            repair_estimate_notes: d.repairEstimate?.notes || '',
+            diy_replaceable: d.diyReplaceable || false,
+            part_name: d.partName || '',
+            part_search_query: d.partSearchQuery || '',
           }))
         )
       }
@@ -608,17 +614,56 @@ function InspectContent() {
               <div style={{ display:'flex', gap:8, flexWrap:'wrap', fontSize:12, color:'#888', marginBottom:16 }}>
               </div>
 
+              {result.totalEstimatedRepairCost && (result.totalEstimatedRepairCost.low > 0 || result.totalEstimatedRepairCost.high > 0) && (
+                <div style={{ background:'#FAEEDA', borderRadius:8, padding:'12px 14px', marginBottom:14, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <div style={{ fontSize:13, fontWeight:500, color:'#633806' }}>Total estimated repair cost</div>
+                  <div style={{ fontSize:18, fontWeight:700, color:'#854F0B' }}>${result.totalEstimatedRepairCost.low.toLocaleString()} – ${result.totalEstimatedRepairCost.high.toLocaleString()}</div>
+                </div>
+              )}
+
               {result.damages?.length > 0 ? (
                 <div>
                   <div style={{ fontSize:12, fontWeight:500, color:'#888', marginBottom:8 }}>DAMAGE FINDINGS ({result.damages.length})</div>
                   {result.damages.map((d: any, i: number) => (
-                    <div key={i} style={{ display:'flex', gap:10, padding:'10px', border:'0.5px solid rgba(0,0,0,0.08)', borderRadius:8, marginBottom:8, background: d.is_new ? '#FCEBEB' : 'transparent' }}>
-                      <div style={{ width:8, height:8, borderRadius:'50%', background: sevDot(d.severity), marginTop:5, flexShrink:0 }} />
-                      <div>
-                        <div style={{ fontSize:13, fontWeight:500 }}>{d.location} {d.is_new && <span style={{ fontSize:11, background:'#FCEBEB', color:'#A32D2D', padding:'1px 6px', borderRadius:10, marginLeft:4 }}>NEW</span>}</div>
-                        <div style={{ fontSize:12, color:'#555', marginTop:2 }}>{d.description}</div>
-                        {d.recommendation && <div style={{ fontSize:12, color:'#185FA5', marginTop:3 }}>→ {d.recommendation}</div>}
+                    <div key={i} style={{ border:'0.5px solid rgba(0,0,0,0.08)', borderRadius:10, marginBottom:10, background: d.is_new ? '#FCEBEB' : 'white', overflow:'hidden' }}>
+                      <div style={{ display:'flex', gap:10, padding:'12px' }}>
+                        <div style={{ width:8, height:8, borderRadius:'50%', background: sevDot(d.severity), marginTop:5, flexShrink:0 }} />
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:13, fontWeight:500 }}>
+                            {d.location}
+                            {d.is_new && <span style={{ fontSize:11, background:'#FCEBEB', color:'#A32D2D', padding:'1px 6px', borderRadius:10, marginLeft:6 }}>NEW</span>}
+                            {d.diyReplaceable && <span style={{ fontSize:11, background:'#EAF3DE', color:'#27500A', padding:'1px 6px', borderRadius:10, marginLeft:6 }}>DIY replaceable</span>}
+                          </div>
+                          <div style={{ fontSize:12, color:'#555', marginTop:3, lineHeight:1.5 }}>{d.description}</div>
+                          {d.recommendation && <div style={{ fontSize:12, color:'#185FA5', marginTop:4 }}>→ {d.recommendation}</div>}
+
+                          {/* Repair estimate */}
+                          {d.repairEstimate && (d.repairEstimate.low > 0 || d.repairEstimate.high > 0) && (
+                            <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                              <span style={{ fontSize:11, color:'#888' }}>Est. repair cost:</span>
+                              <span style={{ fontSize:13, fontWeight:600, color:'#633806' }}>${d.repairEstimate.low.toLocaleString()} – ${d.repairEstimate.high.toLocaleString()}</span>
+                              {d.repairEstimate.notes && <span style={{ fontSize:11, color:'#888' }}>· {d.repairEstimate.notes}</span>}
+                            </div>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Parts links */}
+                      {d.diyReplaceable && d.partSearchQuery && (
+                        <div style={{ borderTop:'0.5px solid rgba(0,0,0,0.07)', padding:'10px 12px', background:'rgba(0,0,0,0.02)', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                          <span style={{ fontSize:11, color:'#888', marginRight:2 }}>Find parts:</span>
+                          {[
+                            { name:'Amazon', url:`https://www.amazon.com/s?k=${encodeURIComponent(d.partSearchQuery)}&i=automotive` },
+                            { name:'RockAuto', url:`https://www.rockauto.com/en/partsgroup/${encodeURIComponent(d.partSearchQuery.split(' ').slice(0,4).join('+')).toLowerCase()}` },
+                            { name:'eBay Motors', url:`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(d.partSearchQuery)}&_sacat=6000` },
+                          ].map(link => (
+                            <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize:11, fontWeight:500, color:'#185FA5', background:'#E6F1FB', padding:'4px 10px', borderRadius:20, textDecoration:'none', border:'0.5px solid rgba(24,95,165,0.2)' }}>
+                              {link.name} →
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
