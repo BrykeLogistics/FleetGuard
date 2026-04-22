@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
@@ -183,6 +184,7 @@ export default function FleetPage() {
   const [csaFilter, setCsaFilter] = useState('all')
   const [lightboxIndex, setLightboxIndex] = useState<number|null>(null)
 
+  const searchParams = useSearchParams()
   useEffect(() => { loadTrucks() }, [])
 
   async function loadTrucks() {
@@ -191,6 +193,12 @@ export default function FleetPage() {
     const { data } = await supabase.from('trucks').select('*, inspections(id, created_at, overall_condition, follow_up_required, is_baseline)').eq('user_id', user.id).order('truck_number')
     setTrucks(data || [])
     setLoading(false)
+    // Auto-open truck if ?truck=ID in URL
+    const truckId = searchParams.get('truck')
+    if (truckId && data) {
+      const truck = data.find((t: any) => t.id === truckId)
+      if (truck) openTruck(truck)
+    }
   }
 
   async function openTruck(truck: any) {
