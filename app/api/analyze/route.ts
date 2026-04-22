@@ -88,23 +88,54 @@ SEVERITY GUIDELINES:
 
 IMPORTANT: Be specific about EXACT location (e.g. "driver side rear quarter panel, lower section near wheel well" not just "side panel"). Include dimensions when estimable (e.g. "approximately 6-inch scratch").
 
+REPAIR COST GUIDANCE:
+Use these realistic commercial vehicle repair ranges as reference:
+- Mirror glass replacement: $50-150 DIY, $150-300 shop
+- Mirror housing/assembly replacement: $80-250 DIY, $250-500 shop
+- Bumper cover repair (minor): $200-400 shop
+- Bumper cover replacement: $400-900 shop
+- Body panel dent repair (PDR): $100-400 per dent
+- Body panel dent repair (conventional): $300-800
+- Scratch touch-up (minor): $50-200 DIY, $150-400 shop
+- Deep scratch/paint repair: $300-800 shop
+- Body molding/trim replacement: $30-100 DIY, $100-250 shop
+- Tail light lens replacement: $50-200 DIY, $150-400 shop
+- Headlight replacement: $100-400 DIY, $300-700 shop
+- Windshield chip repair: $50-150
+- Windshield replacement: $300-700
+- Roof dent repair: $400-1500 depending on size
+- Cargo door repair: $300-800
+- Cargo door replacement: $800-2500
+- Sliding door track repair: $200-600
+- Decal/wrap repair (section): $200-600
+- Full wrap replacement: $2000-5000
+- Wheel rim repair: $75-150 per rim
+- Tire replacement: $150-300 per tire mounted
+
+PARTS REPLACEABILITY:
+For each damage item, determine if the damaged part can be replaced by a moderately skilled person (DIY-replaceable) vs requires a body shop. DIY-replaceable parts include: mirrors, lights, moldings, trim strips, bumper covers, cargo door hardware, steps, hubcaps. Body shop required: frame damage, major body panels, roof repairs, windshield.
+
 Respond ONLY with valid JSON, no markdown, no explanation:
 {
   "overallCondition": "Good|Fair|Poor|Critical",
   "summary": "2-3 sentence professional summary suitable for an insurance or legal document",
+  "totalEstimatedRepairCost": { "low": 0, "high": 0 },
   "damages": [
     {
       "severity": "critical|moderate|minor",
       "location": "precise location on vehicle",
       "description": "detailed professional description including size, depth, and appearance",
       "recommendation": "specific repair recommendation with urgency",
-      "is_new": false
+      "is_new": false,
+      "repairEstimate": { "low": 0, "high": 0, "notes": "brief note on repair method" },
+      "diyReplaceable": false,
+      "partName": "exact OEM part name if DIY replaceable, empty string if not",
+      "partSearchQuery": "optimized search query for finding this part e.g. '2022 Ford Transit driver side mirror assembly' — include year make model and specific part name"
     }
   ],
   "areasChecked": ["list of all areas visible and inspected in the photos"],
   "followUpRequired": false,
-  "estimatedRepairUrgency": "Immediate|Within 1 week|Within 1 month|Monitoring only",
-  "rentalProtectionNotes": "Any notes specifically relevant to disputing rental damage claims or proving pre-existing condition"
+  "estimatedRepairUrgency": "Immediate|Within 1 week|Within 1 month|Monitoring only"
 }`
 
     const content: any[] = []
