@@ -2,16 +2,25 @@
 import { useRef, useState, useEffect } from 'react'
 import { analyzePhotoQuality } from './PhotoQuality'
 
-const SHOTS = [
-  { id: 'front',        label: 'Front',                      icon: '⬆', desc: 'Stand 10–15 ft away, centered on the front grille' },
-  { id: 'front-left',   label: 'Driver side front corner',   icon: '↖', desc: 'Stand 10–15 ft away at a 45° angle from the driver side front corner' },
-  { id: 'driver',       label: 'Driver side',                icon: '⬅', desc: 'Stand 10–15 ft away, walk along the full length of the driver side' },
-  { id: 'rear-left',    label: 'Driver side rear corner',    icon: '↙', desc: 'Stand 10–15 ft away at a 45° angle from the driver side rear corner' },
-  { id: 'rear',         label: 'Rear',                       icon: '⬇', desc: 'Stand 10–15 ft away, centered on the rear doors' },
-  { id: 'rear-right',   label: 'Passenger side rear corner', icon: '↘', desc: 'Stand 10–15 ft away at a 45° angle from the passenger side rear corner' },
-  { id: 'passenger',    label: 'Passenger side',             icon: '➡', desc: 'Stand 10–15 ft away, walk along the full length of the passenger side' },
-  { id: 'front-right',  label: 'Passenger side front corner',icon: '↗', desc: 'Stand 10–15 ft away at a 45° angle from the passenger side front corner' },
+const EXTERIOR_SHOTS = [
+  { id: 'front',        label: 'Front',                       icon: '⬆', desc: 'Stand 10–15 ft away, centered on the front grille' },
+  { id: 'front-left',   label: 'Driver side front corner',    icon: '↖', desc: 'Stand 10–15 ft away at a 45° angle from the driver side front corner' },
+  { id: 'driver',       label: 'Driver side',                 icon: '⬅', desc: 'Stand 10–15 ft away, walk along the full length of the driver side' },
+  { id: 'rear-left',    label: 'Driver side rear corner',     icon: '↙', desc: 'Stand 10–15 ft away at a 45° angle from the driver side rear corner' },
+  { id: 'rear',         label: 'Rear',                        icon: '⬇', desc: 'Stand 10–15 ft away, centered on the rear doors' },
+  { id: 'rear-right',   label: 'Passenger side rear corner',  icon: '↘', desc: 'Stand 10–15 ft away at a 45° angle from the passenger side rear corner' },
+  { id: 'passenger',    label: 'Passenger side',              icon: '➡', desc: 'Stand 10–15 ft away, walk along the full length of the passenger side' },
+  { id: 'front-right',  label: 'Passenger side front corner', icon: '↗', desc: 'Stand 10–15 ft away at a 45° angle from the passenger side front corner' },
 ]
+
+const RENTAL_SHOTS = [
+  { id: 'dashboard',    label: 'Dashboard',                   icon: '🎛', desc: 'Sit in driver seat, capture full dashboard — show all warning lights, odometer, and any interior damage' },
+  { id: 'cargo-bed',    label: 'Cargo area / bed',            icon: '📦', desc: 'Stand at rear doors, photograph the full cargo area — floor, walls, ceiling, and tie-down points' },
+]
+
+function getShots(isRental: boolean) {
+  return isRental ? [...EXTERIOR_SHOTS, ...RENTAL_SHOTS] : EXTERIOR_SHOTS
+}
 
 type StencilPath = { d: string; style?: any }
 type StencilDef = { viewBox: string; paths: StencilPath[] }
@@ -288,9 +297,10 @@ interface Props {
   onComplete: (frames: { shotId: string, label: string, dataUrl: string }[]) => void
   onCancel: () => void
   vehicleType?: string
+  isRental?: boolean
 }
 
-export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Props) {
+export default function GuidedCapture({ onComplete, onCancel, vehicleType, isRental }: Props) {
   const [currentShot, setCurrentShot] = useState(0)
   const [captured, setCaptured] = useState<{ shotId: string, label: string, dataUrl: string }[]>([])
   const [mode, setMode] = useState<'camera'|'review'>('camera')
@@ -304,9 +314,10 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType }: Pro
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
+  const SHOTS = getShots(!!isRental)
   const stencils = getStencils(vehicleType)
   const shot = SHOTS[currentShot]
-  const stencil = stencils[shot.id]
+  const stencil = stencils[shot.id] || stencils['front']
   const progress = Math.round((currentShot / SHOTS.length) * 100)
   const vehicleLabel = getVehicleLabel(vehicleType)
 
