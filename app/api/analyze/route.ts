@@ -37,24 +37,30 @@ function buildPrompt(
 ): string {
   const weakPoints = WEAK_POINTS[vehicleType] || ''
 
-  const exteriorChecklist = `INSPECT EVERY VISIBLE AREA:
+  const exteriorChecklist = `REPORT DAMAGE ONLY. Do not comment on undamaged areas. Do not speculate on cause.
 
-EXTERIOR BODY: dents (any size), creases, collision damage, scratches (any depth), scrapes, scuffs, chips, fading, oxidation, body side moldings/trim strips (present/cracked/loose/missing), evidence of prior repair (mismatched paint, Bondo, overspray, misaligned panels)
-ROOF: dents from low-clearance strikes (depressions/creases/paint cracking especially front above cab), roof marker/clearance lights (present/cracked/missing), antenna damage, seam separation
-GLASS & LIGHTS: windshield cracks/chips, all mirrors (glass/housing), headlights/taillights (cracks/broken lenses/moisture), turn signals and marker lights
-DOORS: all door edges for dings, hinges, sliding cargo door track (sprinters), rear cargo doors/seals/latches (step vans/box trucks), steps and entry areas
+BODY PANELS: dents, creases, scratches, scrapes, scuffs, paint chips, paint transfer marks (color smears from contact), body side moldings/trim (missing/cracked/loose), prior repair evidence (mismatched paint, filler, overspray)
+ROOF: dents/depressions/creases especially above cab, roof marker/clearance lights (cracked/missing), antenna (bent/missing)
+MIRRORS: inspect glass AND housing separately — cracks, missing glass, broken or missing housing
+GLASS & LIGHTS: windshield cracks/chips, headlights/taillights (cracks/broken lenses/moisture), turn signals, marker lights
+DOORS: door edge dings, sliding cargo door track (sprinters), rear cargo doors/seals/latches, entry steps (bent/broken/missing)
 TIRES & WHEELS: sidewall damage/cuts/bulges, rim damage/curb rash, missing/cracked hubcaps
-BRANDING: FedEx/Amazon decal/wrap tears/peeling/missing, DOT placard present and legible
-STRUCTURAL: frame damage, suspension damage, major collision evidence`
+BRANDING: decal/wrap tears/peeling/missing sections
+STRUCTURAL: frame/cross member damage, major collision evidence
+BOX TRUCKS: inspect undercarriage cross members and frame rails for damage
 
-  const interiorChecklist = `INSPECT INTERIOR/CARGO AREA:
-DASHBOARD: warning lights illuminated (describe each), cracked dash, damaged controls, odometer reading if visible, any interior damage
-CARGO BED/AREA: dents, scratches, stains, damage to walls/floor/ceiling, missing tie-down rings, damage to cargo door interior, any modifications or damage not consistent with normal use`
+If a component is not clearly visible, do not comment on it.`
+
+  const interiorChecklist = `REPORT DAMAGE ONLY. Do not comment on undamaged areas.
+
+DASHBOARD: warning lights illuminated (list each), cracked dash, damaged controls
+CARGO FLOOR: floor-mounted step/threshold plate (bent/broken/loose/missing), tie-down track damage, floor damage
+CARGO WALLS/CEILING: dents, holes, tears in panels — ignore light cosmetic scuffing`
 
   const checklist = photoGroup === 'interior' ? interiorChecklist : exteriorChecklist
 
   const rentalInstructions = isRental ? `
-RENTAL DOCUMENTATION MODE: This vehicle is a rental. Document EVERYTHING with extreme precision. Your findings are legal evidence to dispute damage claims. Note pre-existing damage explicitly. Flag anything that could be charged back to the operator.` : ''
+RENTAL: Every finding is legal evidence. Higher sensitivity - document even minor items.` : ''
 
   const baselineInstructions = hasBaseline
     ? `COMPARISON: Compare against baseline below. Mark is_new:true ONLY for damage NOT in baseline. Flag even small changes to existing damage.`
