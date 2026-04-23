@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
 import DamageFeedback from '../components/DamageFeedback'
-import PhotoLightbox from '../components/PhotoLightbox'
+import PhotoStrip from '../components/PhotoStrip'
 
 const emptyForm = { truck_number:'', driver_name:'', make:'', model:'', year:'', license_plate:'', vin:'', vehicle_type:'', csa:'', fleet_type:'owned', rental_company:'', rental_contract:'', rental_start:'', rental_end:'' }
 
@@ -185,7 +185,7 @@ export default function FleetPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number|null>(null)
 
   const searchParams = useSearchParams()
-  const [uninspectedOnly, setUninspectedOnly] = useState(false)
+  const [activeFilter, setActiveFilter] = useState<string|null>(null)
   useEffect(() => { loadTrucks() }, [])
 
   async function loadTrucks() {
@@ -200,10 +200,8 @@ export default function FleetPage() {
       const truck = data.find((t: any) => t.id === truckId)
       if (truck) openTruck(truck)
     }
-    // Auto-filter uninspected if ?filter=uninspected
-    if (searchParams.get('filter') === 'uninspected') {
-      setUninspectedOnly(true)
-    }
+    const filter = searchParams.get('filter')
+    if (filter) setActiveFilter(filter)
   }
 
   async function openTruck(truck: any) {
@@ -295,9 +293,20 @@ export default function FleetPage() {
   }
 
   const csaList = Array.from(new Set(trucks.filter(t => t.csa).map(t => t.csa))).sort() as string[]
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7)
   const isUninspected = (t: any) => !t.inspections || t.inspections.length === 0
-  const ownedTrucks = trucks.filter(t => (t.fleet_type || 'owned') === 'owned' && (!uninspectedOnly || isUninspected(t)))
-  const rentalTrucks = trucks.filter(t => t.fleet_type === 'rental' && (!uninspectedOnly || isUninspected(t)))
+  const isInspectedThisWeek = (t: any) => (t.inspections || []).some((i: any) => new Date(i.created_at) > weekAgo)
+  const hasNewDamage = (t: any) => (t.inspections || []).some((i: any) => i.follow_up_required || i.overall_condition === 'Poor' || i.overall_condition === 'Critical')
+
+  function applyFilter(list: any[]) {
+    if (activeFilter === 'uninspected') return list.filter(isUninspected)
+    if (activeFilter === 'this-week') return list.filter(isInspectedThisWeek)
+    if (activeFilter === 'new-damage') return list.filter(hasNewDamage)
+    return list
+  }
+
+  const ownedTrucks = applyFilter(trucks.filter(t => (t.fleet_type || 'owned') === 'owned'))
+  const rentalTrucks = applyFilter(trucks.filter(t => t.fleet_type === 'rental'))
   const filteredByCsa = csaFilter === 'all' ? trucks : trucks.filter(t => t.csa === csaFilter)
   const csaGroups: Record<string, any[]> = csaList.reduce((acc: Record<string, any[]>, csa: string) => { acc[csa] = trucks.filter((t: any) => t.csa === csa); return acc }, {})
   const noCsaTrucks = trucks.filter(t => !t.csa)
@@ -351,6 +360,7 @@ export default function FleetPage() {
             </div>
           </div>
 
+          {!loadingDetail && <PhotoStrip photos={photos.map((p, i) => ({ url: photoUrls[p.id] || '', label: `Photo ${i+1}`, date: new Date(p.created_at).toLocaleDateString() }))} />}
           {loadingDetail && <div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading...</div>}
           {!loadingDetail && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
@@ -366,15 +376,6 @@ export default function FleetPage() {
                         <div style={{ fontSize:10, color:'#aaa', marginTop:3, textAlign:'center' }}>{new Date(p.created_at).toLocaleDateString()}</div>
                       </div>
                     ))}
-                    {lightboxIndex !== null && (
-                      <PhotoLightbox
-                        photos={photos.map((p, i) => ({ url: photoUrls[p.id] || '', date: new Date(p.created_at).toLocaleDateString(), label: `Photo ${i+1}` }))}
-                        index={lightboxIndex}
-                        onClose={() => setLightboxIndex(null)}
-                        onNext={() => setLightboxIndex(i => i !== null && i < photos.length - 1 ? i + 1 : i)}
-                        onPrev={() => setLightboxIndex(i => i !== null && i > 0 ? i - 1 : i)}
-                      />
-                    )}
                   </div>
                 )}
               </div>
@@ -458,10 +459,12 @@ export default function FleetPage() {
           ))}
         </div>
 
-        {uninspectedOnly && (
-          <div style={{ background:'#FAEEDA', borderRadius:8, padding:'10px 14px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div style={{ fontSize:13, color:'#633806', fontWeight:500 }}>⚠ Showing only trucks not yet inspected</div>
-            <button onClick={() => setUninspectedOnly(false)} style={{ background:'none', border:'none', color:'#854F0B', cursor:'pointer', fontSize:12, textDecoration:'underline' }}>Show all</button>
+        {activeFilter && (
+          <div style={{ background: activeFilter==='new-damage'?'#FCEBEB':activeFilter==='this-week'?'#EAF3DE':'#FAEEDA', borderRadius:8, padding:'10px 14px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ fontSize:13, fontWeight:500, color: activeFilter==='new-damage'?'#A32D2D':activeFilter==='this-week'?'#27500A':'#633806' }}>
+              {activeFilter==='uninspected' ? '⚠ Not yet inspected' : activeFilter==='this-week' ? '✓ Inspected this week' : '🔴 New damage found'}
+            </div>
+            <button onClick={() => setActiveFilter(null)} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:12, textDecoration:'underline' }}>Show all</button>
           </div>
         )}
         {showForm && <TruckForm {...formProps} />}
