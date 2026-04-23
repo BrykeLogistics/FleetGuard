@@ -234,13 +234,13 @@ function InspectContent() {
     setAnalyzeStatus(`Preparing ${Math.min(sourceFrames.length, 6)} frame${sourceFrames.length > 1 ? 's' : ''} for AI analysis...`)
 
     // Use up to 6 frames for video, 3 for photos
-    const maxFrames = uploadMode === 'video' ? 6 : 3
+    const maxFrames = uploadMode === 'video' ? 8 : 8
     const images = await Promise.all(sourceFrames.slice(0, maxFrames).map(async (p) => ({
       media_type: 'image/jpeg',
       data: await resizeImage(p)
     })))
 
-    setAnalyzeStatus('Analyzing with AI vision — this may take 15–30 seconds...')
+    setAnalyzeStatus('Running parallel AI analysis — this may take 10–20 seconds...')
 
     try {
       const res = await fetch('/api/analyze', {
@@ -254,6 +254,7 @@ function InspectContent() {
           notes: notes + (uploadMode === 'video' ? ` [Video walkaround — ${images.length} frames extracted]` : ''),
           baselineDamages,
           vehicleType: trucks.find(t => t.id === selectedTruck)?.vehicle_type || '',
+          fleetType: trucks.find(t => t.id === selectedTruck)?.fleet_type || 'owned',
         })
       })
       const rawText = await res.text()
@@ -407,7 +408,7 @@ function InspectContent() {
                   <div style={{ fontSize:15, fontWeight:500 }}>Guided capture</div>
                   <button onClick={() => setShowGuided(false)} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:13 }}>✕ Cancel</button>
                 </div>
-                <GuidedCapture onComplete={handleGuidedComplete} onCancel={() => setShowGuided(false)} vehicleType={trucks.find(t => t.id === selectedTruck)?.vehicle_type} />
+                <GuidedCapture onComplete={handleGuidedComplete} onCancel={() => setShowGuided(false)} vehicleType={trucks.find(t => t.id === selectedTruck)?.vehicle_type} isRental={trucks.find(t => t.id === selectedTruck)?.fleet_type === 'rental'} />
               </div>
             ) : (
               <div>
@@ -605,7 +606,8 @@ function InspectContent() {
               <div style={{ display:'flex', gap:8, flexWrap:'wrap', fontSize:12, color:'#888', marginBottom:16 }}>
                 <span>Urgency: <strong style={{ color:'#1a1a1a' }}>{result.estimatedRepairUrgency}</strong></span>
                 {result.followUpRequired && <span style={{ color:'#A32D2D', fontWeight:500 }}>⚠ Follow-up required</span>}
-                <span style={{ color:'#888' }}>· {sourceFrames.length} frame{sourceFrames.length > 1 ? 's' : ''} analyzed</span>
+                <span style={{ color:'#888' }}>· {sourceFrames.length} photo{sourceFrames.length > 1 ? 's' : ''} analyzed</span>
+                {result.lowConfidenceFindings > 0 && <span style={{ color:'#633806', fontWeight:500 }}>· ⚠ {result.lowConfidenceFindings} finding{result.lowConfidenceFindings > 1 ? 's' : ''} need physical verification</span>}
               </div>
 
               {result.rentalProtectionNotes && (
@@ -632,10 +634,11 @@ function InspectContent() {
                       <div style={{ display:'flex', gap:10, padding:'12px' }}>
                         <div style={{ width:8, height:8, borderRadius:'50%', background: sevDot(d.severity), marginTop:5, flexShrink:0 }} />
                         <div style={{ flex:1 }}>
-                          <div style={{ fontSize:13, fontWeight:500 }}>
-                            {d.location}
-                            {d.is_new && <span style={{ fontSize:11, background:'#FCEBEB', color:'#A32D2D', padding:'1px 6px', borderRadius:10, marginLeft:6 }}>NEW</span>}
-                            {d.diyReplaceable && <span style={{ fontSize:11, background:'#EAF3DE', color:'#27500A', padding:'1px 6px', borderRadius:10, marginLeft:6 }}>DIY replaceable</span>}
+                          <div style={{ fontSize:13, fontWeight:500, display:'flex', flexWrap:'wrap', alignItems:'center', gap:4 }}>
+                            <span>{d.location}</span>
+                            {d.is_new && <span style={{ fontSize:11, background:'#FCEBEB', color:'#A32D2D', padding:'1px 6px', borderRadius:10 }}>NEW</span>}
+                            {d.diyReplaceable && <span style={{ fontSize:11, background:'#EAF3DE', color:'#27500A', padding:'1px 6px', borderRadius:10 }}>DIY</span>}
+                            {d.confidence !== undefined && d.confidence < 70 && <span style={{ fontSize:11, background:'#FAEEDA', color:'#633806', padding:'1px 6px', borderRadius:10 }}>⚠ Verify in person</span>}
                           </div>
                           <div style={{ fontSize:12, color:'#555', marginTop:3, lineHeight:1.5 }}>{d.description}</div>
                           {d.recommendation && <div style={{ fontSize:12, color:'#185FA5', marginTop:4 }}>→ {d.recommendation}</div>}
