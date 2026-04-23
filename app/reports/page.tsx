@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
+import PhotoLightbox from '../components/PhotoLightbox'
 
 function ReportsContent() {
   const searchParams = useSearchParams()
@@ -15,6 +16,9 @@ function ReportsContent() {
   const [damages, setDamages] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [activeFilter, setActiveFilter] = useState<string|null>(null)
+  const [photos, setPhotos] = useState<any[]>([])
+  const [photoUrls, setPhotoUrls] = useState<{[key:string]:string}>({})
+  const [lightboxIndex, setLightboxIndex] = useState<number|null>(null)
 
   useEffect(() => { loadTrucks() }, [])
   useEffect(() => { if (selectedTruck) loadReport() }, [selectedTruck])
@@ -36,12 +40,21 @@ function ReportsContent() {
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const [inspRes, dmgRes] = await Promise.all([
+    const [inspRes, dmgRes, photoRes] = await Promise.all([
       supabase.from('inspections').select('*').eq('truck_id', selectedTruck).eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('damages').select('*, inspections(created_at, inspection_type, inspector_name)').eq('truck_id', selectedTruck).eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('inspection_photos').select('*').eq('truck_id', selectedTruck).eq('user_id', user.id).order('created_at', { ascending: false }).limit(40),
     ])
     setInspections(inspRes.data || [])
     setDamages(dmgRes.data || [])
+    setPhotos(photoRes.data || [])
+    // Load signed URLs for photos
+    const urls: {[key:string]:string} = {}
+    for (const p of (photoRes.data || [])) {
+      const { data } = await supabase.storage.from('inspection-photos').createSignedUrl(p.storage_path, 3600)
+      if (data?.signedUrl) urls[p.id] = data.signedUrl
+    }
+    setPhotoUrls(urls)
     setLoading(false)
   }
 
@@ -84,10 +97,21 @@ function ReportsContent() {
   // Apply filters from URL params
   const condBadge = (c: string) => c === 'Good' ? 'badge-green' : (c === 'Critical' || c === 'Poor') ? 'badge-red' : c === 'Fair' ? 'badge-amber' : 'badge-gray'
 
+  const photoList = photos.map((p, i) => ({ url: photoUrls[p.id] || '', label: `Photo ${i+1}`, date: new Date(p.created_at).toLocaleDateString() })).filter(p => p.url)
+
   return (
     <div>
       <Navbar />
-      <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px' }}>
+      {lightboxIndex !== null && photoList.length > 0 && (
+        <PhotoLightbox
+          photos={photoList}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onNext={() => setLightboxIndex(i => i !== null && i < photoList.length - 1 ? i + 1 : i)}
+          onPrev={() => setLightboxIndex(i => i !== null && i > 0 ? i - 1 : i)}
+        />
+      )}
+      <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px', paddingRight: photoList.length > 0 ? 64 : 16 }}>
 
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:10 }}>
           <div style={{ fontSize:18, fontWeight:600 }}>Reports</div>
@@ -196,6 +220,20 @@ function ReportsContent() {
           </div>
         )}
       </div>
+      {/* Right photo strip */}
+      {photoList.length > 0 && (
+        <div style={{ position:'fixed', right:8, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', gap:4, zIndex:100, maxHeight:'80vh', overflowY:'auto', padding:'4px' }}>
+          <div style={{ fontSize:9, color:'#aaa', textAlign:'center', marginBottom:2 }}>Photos</div>
+          {photoList.map((p, i) => (
+            <img
+              key={i}
+              src={p.url}
+              onClick={() => setLightboxIndex(i)}
+              style={{ width:44, height:34, objectFit:'cover', borderRadius:5, cursor:'pointer', border: lightboxIndex === i ? '2px solid #185FA5' : '1.5px solid rgba(0,0,0,0.12)', flexShrink:0 }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
