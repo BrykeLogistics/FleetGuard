@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
-import PhotoLightbox from '../components/PhotoLightbox'
+import PhotoStrip from '../components/PhotoStrip'
 
 function ReportsContent() {
   const searchParams = useSearchParams()
@@ -18,7 +18,7 @@ function ReportsContent() {
   const [activeFilter, setActiveFilter] = useState<string|null>(null)
   const [photos, setPhotos] = useState<any[]>([])
   const [photoUrls, setPhotoUrls] = useState<{[key:string]:string}>({})
-  const [lightboxIndex, setLightboxIndex] = useState<number|null>(null)
+
 
   useEffect(() => { loadTrucks() }, [])
   useEffect(() => { if (selectedTruck) loadReport() }, [selectedTruck])
@@ -102,15 +102,7 @@ function ReportsContent() {
   return (
     <div>
       <Navbar />
-      {lightboxIndex !== null && photoList.length > 0 && (
-        <PhotoLightbox
-          photos={photoList}
-          index={lightboxIndex}
-          onClose={() => setLightboxIndex(null)}
-          onNext={() => setLightboxIndex(i => i !== null && i < photoList.length - 1 ? i + 1 : i)}
-          onPrev={() => setLightboxIndex(i => i !== null && i > 0 ? i - 1 : i)}
-        />
-      )}
+
       <div style={{ maxWidth:900, margin:'0 auto', padding:'24px 16px', paddingRight: photoList.length > 0 ? 64 : 16 }}>
 
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:10 }}>
@@ -220,20 +212,7 @@ function ReportsContent() {
           </div>
         )}
       </div>
-      {/* Right photo strip */}
-      {photoList.length > 0 && (
-        <div style={{ position:'fixed', right:8, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', gap:4, zIndex:100, maxHeight:'80vh', overflowY:'auto', padding:'4px' }}>
-          <div style={{ fontSize:9, color:'#aaa', textAlign:'center', marginBottom:2 }}>Photos</div>
-          {photoList.map((p, i) => (
-            <img
-              key={i}
-              src={p.url}
-              onClick={() => setLightboxIndex(i)}
-              style={{ width:44, height:34, objectFit:'cover', borderRadius:5, cursor:'pointer', border: lightboxIndex === i ? '2px solid #185FA5' : '1.5px solid rgba(0,0,0,0.12)', flexShrink:0 }}
-            />
-          ))}
-        </div>
-      )}
+      <PhotoStrip photos={photoList} />
     </div>
   )
 }
