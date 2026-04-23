@@ -36,8 +36,8 @@ export default function Dashboard() {
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px,1fr))', gap:12, marginBottom:20 }}>
           {[
             { label:'Total trucks', value:stats.total, color:'#1a1a1a', href:'/fleet' },
-            { label:'Inspected this week', value:stats.inspectedThisWeek, color:'#27500A', href:'/reports?filter=this-week' },
-            { label:'New damage found', value:stats.newDamage, color:'#A32D2D', href:'/reports?filter=new-damage' },
+            { label:'Inspected this week', value:stats.inspectedThisWeek, color:'#27500A', href:'/fleet?filter=this-week' },
+            { label:'New damage found', value:stats.newDamage, color:'#A32D2D', href:'/fleet?filter=new-damage' },
             { label:'Not yet inspected', value:stats.pending, color:'#633806', href:'/fleet?filter=uninspected' },
           ].map(s => (
             <Link key={s.label} href={s.href} style={{ background:'white', borderRadius:10, padding:'16px', border:'0.5px solid rgba(0,0,0,0.08)', textDecoration:'none', color:'inherit', display:'block', transition:'box-shadow 0.15s, transform 0.15s', cursor:'pointer' }}
