@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import GuidedCapture from '../components/GuidedCapture'
 import DamageFeedback from '../components/DamageFeedback'
-import PhotoLightbox from '../components/PhotoLightbox'
+import PhotoStrip from '../components/PhotoStrip'
 import Link from 'next/link'
 
 function InspectContent() {
@@ -49,7 +49,6 @@ function InspectContent() {
   const [saved, setSaved] = useState(false)
   const [savedInspectionId, setSavedInspectionId] = useState('')
   const [missedDamage, setMissedDamage] = useState('')
-  const [lightboxIndex, setLightboxIndex] = useState<number|null>(null)
   const [error, setError] = useState('')
   const [showGuided, setShowGuided] = useState(false)
 
@@ -601,16 +600,7 @@ function InspectContent() {
         {step === 3 && result && (
           <div style={{ paddingBottom: 80 }}>
 
-            {/* Lightbox */}
-            {lightboxIndex !== null && sourceFrames.length > 0 && (
-              <PhotoLightbox
-                photos={sourceFrames.map((src, i) => ({ url: src, label: `Photo ${i + 1}` }))}
-                index={lightboxIndex}
-                onClose={() => setLightboxIndex(null)}
-                onNext={() => setLightboxIndex(i => i !== null && i < sourceFrames.length - 1 ? i + 1 : i)}
-                onPrev={() => setLightboxIndex(i => i !== null && i > 0 ? i - 1 : i)}
-              />
-            )}
+
 
             <div style={{ display:'flex', gap:0, alignItems:'flex-start' }}>
 
@@ -714,19 +704,7 @@ function InspectContent() {
                 )}
               </div>
 
-              {/* ── Right photo strip ── */}
-              {sourceFrames.length > 0 && (
-                <div style={{ position:'fixed', right:8, top:'50%', transform:'translateY(-50%)', display:'flex', flexDirection:'column', gap:4, zIndex:100, maxHeight:'80vh', overflowY:'auto', padding:'4px' }}>
-                  {sourceFrames.map((src, i) => (
-                    <img
-                      key={i}
-                      src={src}
-                      onClick={() => setLightboxIndex(i)}
-                      style={{ width:44, height:34, objectFit:'cover', borderRadius:5, cursor:'pointer', border: lightboxIndex === i ? '2px solid #185FA5' : '1.5px solid rgba(0,0,0,0.12)', flexShrink:0, transition:'border 0.1s' }}
-                    />
-                  ))}
-                </div>
-              )}
+              <PhotoStrip photos={sourceFrames.map((src, i) => ({ url: src, label: `Photo ${i + 1}` }))} />
             </div>
 
             {/* ── Sticky submit bar ── */}
