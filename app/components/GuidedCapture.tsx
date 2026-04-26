@@ -408,6 +408,10 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType, isRen
   }
 
   function finishEarly() {
+    const missing = SHOTS.length - captured.length
+    if (missing > 0 && captured.length > 0) {
+      if (!confirm(`You have ${missing} photo${missing > 1 ? 's' : ''} remaining. Submit with ${captured.length} of ${SHOTS.length} photos? Missing angles may reduce inspection accuracy.`)) return
+    }
     if (captured.length > 0) onComplete(captured)
     else onCancel()
   }
