@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import GuidedCapture from '../components/GuidedCapture'
+import { useProfile } from '@/lib/useProfile'
 import DamageFeedback from '../components/DamageFeedback'
 import PhotoStrip from '../components/PhotoStrip'
 import Link from 'next/link'
@@ -48,7 +49,9 @@ function InspectContent() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [savedInspectionId, setSavedInspectionId] = useState('')
+  const { profile, isDriver } = useProfile()
   const [missedDamage, setMissedDamage] = useState('')
+  const [acknowledged, setAcknowledged] = useState(false)
   const [error, setError] = useState('')
   const [showGuided, setShowGuided] = useState(false)
 
@@ -289,6 +292,10 @@ function InspectContent() {
       follow_up_required: result.followUpRequired,
       repair_urgency: result.estimatedRepairUrgency,
       is_baseline: isBaseline,
+      acknowledged: isDriver ? acknowledged : true,
+      acknowledged_by: profile?.full_name || inspector,
+      acknowledged_at: new Date().toISOString(),
+      locked: false,
       user_id: user.id,
     }).select().single()
 
@@ -621,7 +628,7 @@ function InspectContent() {
                   </div>
 
                   {/* Total cost */}
-                  {result.totalEstimatedRepairCost && (result.totalEstimatedRepairCost.low > 0 || result.totalEstimatedRepairCost.high > 0) && (
+                  {!isDriver && result.totalEstimatedRepairCost && (result.totalEstimatedRepairCost.low > 0 || result.totalEstimatedRepairCost.high > 0) && (
                     <div style={{ background:'#FAEEDA', borderRadius:8, padding:'10px 14px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                       <div style={{ fontSize:12, fontWeight:500, color:'#633806' }}>Total estimated repairs</div>
                       <div style={{ fontSize:16, fontWeight:700, color:'#854F0B' }}>${result.totalEstimatedRepairCost.low.toLocaleString()} – ${result.totalEstimatedRepairCost.high.toLocaleString()}</div>
@@ -675,7 +682,8 @@ function InspectContent() {
                     <div style={{ padding:'16px', background:'#EAF3DE', borderRadius:8, fontSize:13, color:'#27500A' }}>No damage detected.</div>
                   )}
 
-                  {/* Did I miss anything */}
+                  {/* Did I miss anything — managers/owners only */}
+                  {!isDriver && (
                   <div style={{ marginTop:14, background:'#f7f7f6', borderRadius:10, padding:'12px 14px' }}>
                     <div style={{ fontSize:13, fontWeight:500, marginBottom:8, color:'#1a1a1a' }}>Did I miss anything?</div>
                     <textarea
@@ -686,6 +694,7 @@ function InspectContent() {
                       style={{ width:'100%', fontSize:13, border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:8, padding:'10px 12px', resize:'vertical', lineHeight:1.5, background:'white', color:'#1a1a1a', boxSizing:'border-box' }}
                     />
                   </div>
+                  )}
 
                   {/* Post-save feedback */}
                   {saved && savedInspectionId && (
@@ -712,7 +721,7 @@ function InspectContent() {
               {!saved ? (
                 <button
                   onClick={saveInspection}
-                  disabled={saving}
+                  disabled={saving || (isDriver && !acknowledged && !saved)}
                   style={{ width:'100%', padding:'14px', background: saving ? '#aaa' : '#185FA5', color:'white', border:'none', borderRadius:10, fontSize:16, fontWeight:600, cursor: saving ? 'default' : 'pointer', letterSpacing:'0.02em' }}>
                   {saving ? 'Saving...' : 'Submit inspection'}
                 </button>
