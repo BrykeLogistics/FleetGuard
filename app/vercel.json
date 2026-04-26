@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/prompt-review",
+      "schedule": "0 9 1,15 * *"
+    }
+  ]
+}
