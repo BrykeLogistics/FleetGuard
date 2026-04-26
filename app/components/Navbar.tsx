@@ -1,9 +1,11 @@
 'use client'
 import { supabase } from '@/lib/supabase'
+import { useProfile } from '@/lib/useProfile'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 export default function Navbar() {
+  const { profile, isOwner, isManager, isDriver } = useProfile()
   const path = usePathname()
 
   const navItems = [
@@ -49,7 +51,8 @@ export default function Navbar() {
       </div>
 
       {/* Sign out */}
-      <button onClick={() => supabase.auth.signOut()} style={{ background:'none', border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:7, padding:'5px 12px', fontSize:13, color:'#888', cursor:'pointer' }}>
+      {profile && <span style={{ fontSize:11, padding:'3px 10px', borderRadius:20, background: profile.role==='owner'?'#FCEBEB':profile.role==='manager'?'#E6F1FB':'#EAF3DE', color: profile.role==='owner'?'#A32D2D':profile.role==='manager'?'#0C447C':'#27500A', fontWeight:500, marginRight:4 }}>{profile.full_name?.split(' ')[0]} · {profile.role}</span>}
+            <button onClick={() => supabase.auth.signOut()} style={{ background:'none', border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:7, padding:'5px 12px', fontSize:13, color:'#888', cursor:'pointer' }}>
         Sign out
       </button>
     </nav>
