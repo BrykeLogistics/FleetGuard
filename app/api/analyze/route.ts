@@ -368,7 +368,7 @@ async function analyzePhotos(images: any[], prompt: string): Promise<any> {
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 4000,
+    max_tokens: 3000,
     messages: [{ role: 'user', content }],
   })
 
