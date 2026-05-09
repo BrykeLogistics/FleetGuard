@@ -55,8 +55,8 @@ function InspectContent() {
 
   // ── CHANGED: wait for profile to resolve before loading trucks ──
   useEffect(() => {
-  if (!loading) loadTrucks()
-}, [loading])
+  if (!profileloading) loadTrucks()
+}, [profileloading])
 
   // ── CHANGED: drivers see trucks matching their CSA, owners/managers see their fleet ──
   async function loadTrucks() {
