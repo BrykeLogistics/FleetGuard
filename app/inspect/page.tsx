@@ -53,13 +53,41 @@ function InspectContent() {
   const [error, setError] = useState('')
   const [showGuided, setShowGuided] = useState(false)
 
-  useEffect(() => { loadTrucks() }, [])
+  // ── CHANGED: wait for profile to resolve before loading trucks ──
+  useEffect(() => {
+    if (profile !== undefined) loadTrucks()
+  }, [profile])
 
+  // ── CHANGED: drivers see trucks matching their CSA, owners/managers see their fleet ──
   async function loadTrucks() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data } = await supabase.from('trucks').select('*').eq('user_id', user.id).order('truck_number')
-    setTrucks(data || [])
+
+    if (isDriver) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('csa')
+        .eq('id', user.id)
+        .single()
+
+      if (!profileData?.csa) return
+
+      const { data } = await supabase
+        .from('trucks')
+        .select('*')
+        .eq('location', profileData.csa)
+        .order('truck_number')
+
+      setTrucks(data || [])
+    } else {
+      const { data } = await supabase
+        .from('trucks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('truck_number')
+
+      setTrucks(data || [])
+    }
   }
 
   function handlePhotoFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -334,7 +362,6 @@ function InspectContent() {
         @keyframes spin  { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-        /* Step tabs — flex on mobile, shrink text */
         .step-tab {
           flex: 1;
           padding: 10px 4px;
@@ -351,7 +378,6 @@ function InspectContent() {
           .step-tab { font-size: 13px; padding: 10px 20px; flex: none; }
         }
 
-        /* Media thumbnail grid — 3 cols on phone */
         .media-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
@@ -361,7 +387,6 @@ function InspectContent() {
           .media-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
         }
 
-        /* Remove buttons — 28px min tap target */
         .thumb-remove {
           position: absolute;
           top: 4px; right: 4px;
@@ -378,7 +403,6 @@ function InspectContent() {
           -webkit-tap-highlight-color: transparent;
         }
 
-        /* Capture option cards */
         .capture-option {
           border-radius: 12px;
           padding: 16px;
@@ -391,7 +415,6 @@ function InspectContent() {
         }
         .capture-option:active { opacity: 0.75; }
 
-        /* Results layout: column on mobile, row on desktop */
         .results-layout {
           display: flex;
           flex-direction: column;
@@ -402,11 +425,9 @@ function InspectContent() {
           .results-layout { flex-direction: row; align-items: flex-start; }
         }
 
-        /* Photo strip — hide on mobile */
         .photo-strip-wrapper { display: none; }
         @media (min-width: 640px) { .photo-strip-wrapper { display: block; } }
 
-        /* Action button rows — full width stack on mobile */
         .action-row {
           display: flex;
           flex-direction: column;
@@ -422,7 +443,6 @@ function InspectContent() {
           box-sizing: border-box;
         }
 
-        /* Part links row */
         .part-links {
           display: flex;
           flex-wrap: wrap;
@@ -787,7 +807,6 @@ function InspectContent() {
               <div className="results-main">
                 <div className="card" style={{ padding: '16px', marginBottom: 12 }}>
 
-                  {/* Header */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <div style={{ fontSize: 15, fontWeight: 500 }}>Analysis complete</div>
                     <div style={{ fontSize: 20, fontWeight: 700, color: condColor(result.overallCondition) }}>
@@ -807,7 +826,6 @@ function InspectContent() {
                     )}
                   </div>
 
-                  {/* Total cost — managers/owners only */}
                   {!isDriver && result.totalEstimatedRepairCost &&
                     (result.totalEstimatedRepairCost.low > 0 || result.totalEstimatedRepairCost.high > 0) && (
                     <div style={{ background: '#FAEEDA', borderRadius: 8, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
@@ -818,7 +836,6 @@ function InspectContent() {
                     </div>
                   )}
 
-                  {/* Damage findings */}
                   {result.damages?.length > 0 ? (
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 500, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -877,7 +894,6 @@ function InspectContent() {
                     </div>
                   )}
 
-                  {/* Missed damage — managers/owners only */}
                   {!isDriver && (
                     <div style={{ marginTop: 14, background: '#f7f7f6', borderRadius: 10, padding: '12px 14px' }}>
                       <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8, color: '#1a1a1a' }}>Did I miss anything?</div>
@@ -891,7 +907,6 @@ function InspectContent() {
                     </div>
                   )}
 
-                  {/* Post-save feedback */}
                   {saved && savedInspectionId && (
                     <div style={{ marginTop: 12 }}>
                       <DamageFeedback inspectionId={savedInspectionId} truckId={selectedTruck} onSubmitted={() => {}} />
@@ -899,7 +914,6 @@ function InspectContent() {
                   )}
                 </div>
 
-                {/* After-save actions */}
                 {saved && (
                   <div className="action-row" style={{ marginBottom: 12 }}>
                     <Link href="/" className="btn">← Dashboard</Link>
@@ -917,7 +931,6 @@ function InspectContent() {
                 )}
               </div>
 
-              {/* Photo strip — desktop only */}
               <div className="photo-strip-wrapper">
                 <PhotoStrip photos={sourceFrames.map((src, i) => ({ url: src, label: `Photo ${i + 1}` }))} />
               </div>
@@ -926,7 +939,6 @@ function InspectContent() {
         )}
       </div>
 
-      {/* Sticky submit bar — step 3 only */}
       {step === 3 && result && (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'white', borderTop: '0.5px solid rgba(0,0,0,0.1)', padding: '10px 16px', zIndex: 200 }}>
           {!saved ? (
