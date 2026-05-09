@@ -53,17 +53,17 @@ function InspectContent() {
   const [error, setError] = useState('')
   const [showGuided, setShowGuided] = useState(false)
 
-  // ── CHANGED: wait for profile to resolve before loading trucks ──
+  // Wait for profile to finish loading, then load trucks based on role
   useEffect(() => {
-  if (!profileloading) loadTrucks()
-}, [profileloading])
+    if (!profileLoading) loadTrucks()
+  }, [profileLoading])
 
-  // ── CHANGED: drivers see trucks matching their CSA, owners/managers see their fleet ──
   async function loadTrucks() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
     if (isDriver) {
+      // Drivers: load trucks where truck location (CSA) matches driver's CSA
       const { data: profileData } = await supabase
         .from('profiles')
         .select('csa')
@@ -80,6 +80,7 @@ function InspectContent() {
 
       setTrucks(data || [])
     } else {
+      // Owners/managers: load their full fleet
       const { data } = await supabase
         .from('trucks')
         .select('*')
@@ -481,7 +482,7 @@ function InspectContent() {
                   <option value="">— select a truck —</option>
                   {trucks.map(t => <option key={t.id} value={t.id}>#{t.truck_number} — {t.driver_name}</option>)}
                 </select>
-                {trucks.length === 0 && (
+                {trucks.length === 0 && !profileLoading && (
                   <div style={{ fontSize: 12, color: '#A32D2D', marginTop: 4 }}>
                     No trucks found. <Link href="/fleet" style={{ color: '#185FA5' }}>Add a truck first →</Link>
                   </div>
@@ -803,7 +804,6 @@ function InspectContent() {
         {step === 3 && result && (
           <div>
             <div className="results-layout">
-
               <div className="results-main">
                 <div className="card" style={{ padding: '16px', marginBottom: 12 }}>
 
