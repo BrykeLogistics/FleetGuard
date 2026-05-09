@@ -6,29 +6,71 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
-// Vehicle-specific weak points known from fleet experience
+// ─────────────────────────────────────────────────────────────────────────────
+// VEHICLE-SPECIFIC WEAK POINTS
+// Updated from 25 annotated training photos across 4 vehicles (2 step vans,
+// 1 Ford Transit), Bryke Logistics fleet, Fort Lauderdale FL.
+// ─────────────────────────────────────────────────────────────────────────────
 const WEAK_POINTS: Record<string, string> = {
-  sprinter: `Ford Transit / Mercedes Sprinter / Ram ProMaster known weak points:
-- Lower sliding door track: rust, deformation, damage from curbs
-- Front lower bumper: scrapes from curbs, misalignment from prior impact
-- Roof front lip: dents from low clearances
-- Mirror housing: cracks, missing glass, broken housings
-- Rear door hinge: wear, misalignment
-- Mercedes Sprinter: front bumper lower valance cracks, roof rack damage, sliding door track deformation`,
 
-  stepvan: `Step Van (Utilimaster, Grumman, P-series, Ford P700/P1000) known weak points:
-- Rear upper corners: active rust/corrosion is common on older vans — document on baseline, escalate ONLY if bubbling/flaking paint appears on follow-up
-- Area above front tires (both sides): high contact zone, inspect carefully for scrapes and dents
-- Step entry: dents, cracks, bent metal
-- Lower body side panels: dock contact scrapes — describe FULL length from start to end point
-- Roof front edge seam: check for corrosion at seam where roof meets front wall — known weak point on older vans
-- Front panel above windshield: check for paint loss, chips, impact damage
-- Rear cargo door lower corners: rust, damage, seal condition
+  sprinter: `Ford Transit / Mercedes Sprinter / Ram ProMaster known weak points:
+
+FRONT END:
+- Front bumper fascia: dark gray/charcoal on Transit is FACTORY COLOR — not damage
+- Front bumper lower: scrapes from curbs, misalignment from prior impact
+- Cab "cheek" panels: lower front corners BETWEEN headlight housing and front wheel arch — crease or dent here = curb/parking strike, commonly missed because it's a curved transition zone
+- Roof marker lights (Ford Transit): THREE amber lights across top of windshield — check ALL THREE for cracked or missing lenses, this is a DOT compliance issue and a known failure point
+- Mirror housing: cracks, missing glass, broken or missing housing
+
+ROOF (Ford Transit):
+- Roof panels are ALUMINUM — dents appear as subtle surface ripples or irregular reflections, not sharp creases
+- Scan full roof surface for ANY irregular light reflection pattern indicating dents
+- Roof-to-side-wall drip rail seam: inspect FULL LENGTH on both sides for separation, lifting, or gaps — a thin shadow line or color change along the roof edge = seam damage, water intrusion risk in Florida
+- Rear roof clearance lights (Ford Transit): check rear roof-mounted lights for cracked or missing lenses
+
+SIDES:
+- Sliding door track (Transit/Sprinter): deformation, damage from curbs
+- Body side step rail / rocker protection strip (Ford Transit): chrome/silver trim running between front and rear wheel arches — check for bends, scrapes, missing sections — commonly missed as it blends with shadow line at bottom of body
+
+REAR:
+- Rear bumper cover (Ford Transit): WHITE PAINTED PLASTIC — any bare gray/silver plastic visible = paint through to substrate, flag as moderate (not a scuff)
+- Rear bumper corners: check both corners for separation/gap from body — separated corner = bumper no longer properly mounted, safety issue
+- Rear door hinges: wear, misalignment, separation`,
+
+  stepvan: `Step Van (Utilimaster, Alvan, Grumman, Ford P-series P700/P1000) known weak points:
+
+FRONT END:
+- Lower front fascia panel (CRITICAL ZONE): the panel between the BOTTOM of the grille bars and the TOP of the bumper — on older step vans this panel is frequently missing, collapsed, or severely damaged, exposing the radiator support and mechanical components. DO NOT assume this is a normal open grille. If mechanical components are visible below the grille, flag as missing/damaged lower front fascia, moderate-to-critical.
+- Front bumper end caps (both corners): rubber/plastic end caps at driver and passenger corners of bumper — check for missing, cracked, or deformed caps
+- Bumper alignment: assess whole bumper unit — if it sits unevenly or is canted, prior impact suspected even without denting
+- Cab "cheek" panels: lower front corners between headlight housing and front wheel arch — crease = curb/parking strike
+- A-pillar to cab panel junction: check both sides for impact dents at the junction where A-pillar meets the front cab panel just below windshield — absorbs sideswipe impacts, hard to see on curved surface
+- Front panel above windshield: paint loss, chips, impact damage
+
+ROOF:
+- Roof front edge seam (BOTH corners): where roof meets front wall — known corrosion and impact point, check BOTH driver and passenger front corners
+- Mid-roof longitudinal seam: scan the roof-to-side-wall seam along the FULL LENGTH on both sides — not just corners — deformation or separation along this seam = low-clearance contact
+- Roof-to-rear-wall seam flashing (CRITICAL): inspect the metal flashing strip across the FULL WIDTH of the top rear edge — lifting, separation, or rust staining here = water intrusion, urgent in Florida humidity. This looks like a thin dark line or shadow — do NOT dismiss as normal seam.
 - Clearance lights: cracked, missing, or non-functional
+
+SIDES:
+- Area above front tires (both sides): high contact zone, inspect carefully
+- Lower body side panels: dock contact scrapes — describe FULL length with start and end points. White-on-white scrapes are low contrast — scan for tonal variation and sheen differences along the full lower body length
+- Lower body damage under 12 inches from ground: may not be resolvable from a full-side photo — flag for physical close-up verification if ANY tonal variation is visible at the lower body edge
+
+REAR:
+- Upper rear corners (BOTH sides): dock impact dents are common — document both corners. If one corner is dented, CHECK THE OPPOSITE CORNER too.
+- Rear cargo door vertical edges: inspect both vertical door edges for bending or deformation along their full length — bent door edge affects weatherseal and latching
+- Rear cargo door hardware (handle/latch): check for bent, scraped, or damaged exterior hardware
+- Rear cargo door lower corners: rust, damage, seal condition
 - Rear bumper: dock strikes, deformation
-- Grille surround: Utilimaster/Alvan tan/beige surround is FACTORY COLOR — do NOT flag as paint damage
-- Door pull straps, door chains, door holders, vent window latches: STANDARD EQUIPMENT — do NOT flag these
-- Rear cargo door center seam: NORMAL construction feature — do NOT flag unless dramatically misaligned`,
+- Rear step platform: check for bending or deformation at corners
+- Rear cargo door center seam: NORMAL construction — do NOT flag unless dramatically misaligned
+
+DO NOT FLAG (standard equipment):
+- Door pull straps, door chains, door holders, vent window latches = STANDARD EQUIPMENT
+- Utilimaster/Alvan tan/beige grille surround = FACTORY COLOR, not paint damage
+- Wheel rust/oxidation on brake drums/rotors = NORMAL WEAR`,
 
   boxtruck: `Box Truck / Straight Truck known weak points:
 - Rear bumper: dock strikes, deformation, underride guard damage
@@ -39,7 +81,9 @@ const WEAK_POINTS: Record<string, string> = {
 - Frame rails and cross members: check undercarriage for damage`,
 }
 
-// USA side orientation — compact version
+// ─────────────────────────────────────────────────────────────────────────────
+// USA ORIENTATION
+// ─────────────────────────────────────────────────────────────────────────────
 const ORIENTATION = `USA VEHICLE ORIENTATION (driver=LEFT side of vehicle):
 - Front photo: driver side = YOUR LEFT, passenger side = YOUR RIGHT
 - Rear photo: driver side = YOUR RIGHT, passenger side = YOUR LEFT
@@ -49,61 +93,95 @@ const ORIENTATION = `USA VEHICLE ORIENTATION (driver=LEFT side of vehicle):
 - Rear-left corner = DRIVER SIDE rear. Rear-right corner = PASSENGER SIDE rear.
 ALWAYS use "driver side" or "passenger side" — NEVER "left" or "right" alone.`
 
-// Core damage knowledge accumulated from fleet training
-const DAMAGE_KNOWLEDGE = `DAMAGE ASSESSMENT KNOWLEDGE:
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE DAMAGE KNOWLEDGE
+// Derived from 25 annotated training photos, Bryke Logistics fleet.
+// ─────────────────────────────────────────────────────────────────────────────
+const DAMAGE_KNOWLEDGE = `DAMAGE ASSESSMENT KNOWLEDGE — BRYKE LOGISTICS FLEET TRAINED RULES:
 
-PAINT/SURFACE SEVERITY HIERARCHY (escalate accordingly):
-1. Surface scuff — paint intact, no penetration → minor
-2. Paint scratched through clearcoat but primer intact → minor-to-moderate
-3. Paint scraped to bare metal (primer removed) → moderate — flag RUST RISK, especially in Florida humidity
-4. Deep scratch through primer to bare metal + gouging → moderate-to-critical depending on size
-5. Active rust with bubbling or flaking paint → moderate minimum, escalate urgency
+━━━ PAINT / SURFACE SEVERITY ━━━
+1. Surface scuff — paint intact → minor
+2. Scratch through clearcoat, primer intact → minor-to-moderate
+3. Paint scraped to bare metal → moderate — always flag RUST RISK (Florida humidity)
+4. Deep scratch/gouge through primer → moderate-to-critical by size
+5. Bubbling or flaking paint over rust → moderate minimum, urgency "Within 1 week"
+6. Active rust through body panels → critical
+On Ford Transit: bare GRAY/SILVER plastic showing on white bumper = paint-through damage, NOT a scuff → moderate
 
-RUST/CORROSION DISTINCTION:
-- Wheel rust/oxidation on rotors and drums = NORMAL WEAR — do NOT flag
-- Surface corrosion (minor discoloration, no bubbling) = document as minor wear item
-- Bubbling or flaking paint over rust = MODERATE severity, flag urgency "Within 1 week"
-- Active rust through body panels = CRITICAL
+━━━ RUST / CORROSION ━━━
+- Wheel rust on rotors/drums = NORMAL WEAR — do NOT flag
+- Surface corrosion, no bubbling = minor wear item
+- Bubbling/flaking paint over rust = moderate, urgency escalate
+- Rust staining at seam joints (especially rear roof seam) = water intrusion risk → moderate-to-critical
 
-CONTINUOUS DAMAGE ZONES:
-- When a scrape, scratch, or damage runs across a continuous area, describe it as ONE finding
-- Include explicit start and end points: e.g., "lower driver-side panel scrape running from front wheel arch to rear wheel arch, approx 8 ft long"
-- Do NOT split a continuous damage zone into multiple findings
+━━━ HIGH-MISS-RISK DAMAGE PATTERNS (from fleet training) ━━━
 
-BUMPER ALIGNMENT RULE:
-- Assess bumper as a WHOLE UNIT, not just surface condition
-- A bumper that is crooked, canted, or offset = evidence of PRIOR IMPACT even without visible denting
-- Flag misaligned bumpers as moderate severity with note "prior impact suspected"
+1. MISSING LOWER FRONT FASCIA (step vans)
+   If mechanical components (radiator, frame cross-member, tow hook hardware) are visible BELOW the grille bars and ABOVE the bumper, the lower front fascia panel is missing or collapsed. This is NOT a normal open-grille appearance. Flag as: "Lower front fascia missing/collapsed — radiator support exposed." Severity: moderate-to-critical.
 
-PANEL GAPS AND SEPARATIONS:
-- Flag any visible gap where panels should sit flush — especially at hood/windshield/cab junctions
-- Visible panel separation = potential structural concern, flag for physical verification
+2. LONG LOWER BODY PANEL SCRAPES
+   White step van panels show dock contact scrapes as subtle tonal variations — slightly different sheen or gray tone along the lower 18 inches of the cargo body. Scan the FULL LENGTH of both sides. Report as one continuous finding with start and end points. Do NOT skip because the van is white.
 
-REFLECTORS AND DOT COMPLIANCE:
-- Check ALL reflectors: front, side, and rear
-- Any reflector that is partially missing, cracked, or non-reflective = DOT compliance issue = moderate severity
+3. REAR ROOF SEAM FLASHING FAILURE (step vans)
+   The metal flashing strip along the TOP REAR EDGE of the cargo body (full width) can separate, lift, or rust. It appears as a thin dark line, lifted edge, or rust-brown staining along the top rear. This is NOT a normal shadow line. Flag as: "Rear roof seam flashing — separation/rust across [width]." Severity: moderate-to-critical. Water intrusion urgency in Florida.
 
-DAMAGE BENEATH DECALS AND WRAPS:
-- Actively scan for scratches, gashes, or impact damage visible through or beneath graphic areas
-- Report these separately with note "damage beneath/through decal"
+4. UPPER REAR CORNER DENTS (step vans)
+   Dock impact dents at the upper rear corners of the cargo body appear as circular depressions 4–8 inches across. They can look like shadows from a distance. If one corner is dented, CHECK THE OPPOSITE CORNER — dock impacts frequently affect both sides. Flag each separately.
 
-HEADLIGHT OXIDATION:
-- ONLY flag if clearly visible in this photo
-- Do NOT assume oxidation based on vehicle age or other trucks in the fleet
-- Each photo is assessed independently
+5. SUB-12-INCH LOWER BODY DAMAGE
+   Damage on the bottom 12 inches of the body may not be resolvable from a full-side photo. If ANY tonal variation or shadow irregularity is visible along the lower body edge, flag it and note: "Requires physical close-up verification — damage may be present at lower body edge."
 
-UNCERTAIN DEFORMATION:
-- Curved body panels can make it hard to confirm deformation from photos
-- When uncertain, flag as "possible deformation — verify with close-up or physical inspection" with confidence < 70
+6. CAB CHEEK PANEL CREASE
+   The panel between the headlight housing and the front wheel arch (lower front corner on both sides) absorbs curb and parking strikes. A subtle inward crease here is easy to miss on curved white panels. Check both sides on every front-facing photo.
 
-ROOF/SEAM WELD CORNERS:
-- Check weld corners at roof-to-wall and panel junctions for cracking or separation
-- Any separation or crack at a weld corner = moderate severity
+7. TRANSIT DRIP RAIL / ROOF SEAM SEPARATION
+   On Ford Transit vans, inspect the full-length roof-to-side-wall seam (drip rail) on both sides. Separation looks like a thin lifted edge or color discontinuity along the roof line. Flag as: "Roof drip rail seam — separation/lifting, [driver/passenger] side, [extent]." Moderate-to-critical.
 
-EACH PHOTO IS INDEPENDENT:
-- Never pattern-match damage between trucks or assume damage from one photo exists in another
-- Assess only what is visible in the current photo set`
+8. REAR CARGO DOOR VERTICAL EDGE DEFORMATION (step vans)
+   The vertical edges of rear cargo doors can be bent or scraped along their length from backing into objects. This is distinct from a panel scrape — the door edge itself is deformed, affecting seal and latch. Flag each door edge separately.
 
+9. A-PILLAR / CAB CORNER IMPACT DENT
+   At the junction of the A-pillar and front cab panel just below the windshield line — impact dents here absorb sideswipe damage and are hard to see on curved panels. Check both sides. Flag as: "A-pillar/cab corner dent, [side], approx [size], possible prior sideswipe."
+
+10. TRANSIT BODY SIDE STEP RAIL DAMAGE
+    Ford Transit vans have a chrome/silver step protection rail running between the wheel arches along the lower body. Scrapes, bends, or missing sections blend with the body shadow line. Check both sides on every side-view photo.
+
+━━━ CONTINUOUS DAMAGE ZONES ━━━
+- One scrape/scratch running over a continuous area = ONE finding with start and end points
+- Do NOT fragment a continuous damage zone into multiple findings
+
+━━━ BUMPER RULES ━━━
+- Assess bumper as a WHOLE UNIT — crooked/canted = prior impact even without denting
+- Check bumper END CAPS on step vans (both corners) — commonly missing or cracked
+- Check bumper CORNER SEPARATION on Transits — gap between corner and body = not mounted correctly
+
+━━━ PANEL GAPS ━━━
+- Any gap where panels should sit flush = flag for verification
+- Hood/windshield/cab junctions especially important
+
+━━━ REFLECTORS / DOT ━━━
+- All reflectors must be present and intact — partial/cracked = DOT compliance issue, moderate
+- Ford Transit: 3 front roof marker lights + rear roof lights — ALL must be checked, cracked/missing lens = DOT issue
+
+━━━ DAMAGE BENEATH DECALS ━━━
+- Actively scan for scratches or impacts visible through/beneath graphic areas
+
+━━━ INDEPENDENT PHOTO ASSESSMENT ━━━
+- Each photo assessed independently — never pattern-match between trucks
+- Headlight oxidation: flag ONLY if clearly visible in THIS photo
+- Uncertain deformation on curved surfaces: flag as "possible — verify with close-up"
+
+━━━ ROOF SEAM CHECKLIST (run on every inspection) ━━━
+Check all four roof corner seam joints:
+1. Front driver corner
+2. Front passenger corner
+3. Rear driver corner
+4. Rear passenger corner
+Plus: full-length side seams (both sides) and full-width rear top seam`
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROMPT BUILDER
+// ─────────────────────────────────────────────────────────────────────────────
 function buildPrompt(
   truckInfo: string,
   vehicleContext: string,
@@ -118,95 +196,78 @@ function buildPrompt(
 ): string {
   const weakPoints = WEAK_POINTS[vehicleType] || ''
 
-  const exteriorChecklist = `EXTERIOR INSPECTION CHECKLIST — REPORT DAMAGE ONLY. Do not comment on undamaged areas. Do not speculate on cause.
+  const exteriorChecklist = `EXTERIOR INSPECTION CHECKLIST — REPORT DAMAGE ONLY. Do not comment on undamaged areas.
 
-BODY PANELS:
-- Dents, creases, scratches, scrapes, scuffs, paint chips
-- Paint transfer marks (color smears from contact with other objects)
-- Body side moldings/trim: missing, cracked, or loose
-- Prior repair evidence: mismatched paint, body filler, overspray
-- Panel gaps and separations at hood/windshield/cab junctions
-- Damage beneath or through decals/wraps
+FRONT END:
+- Lower front fascia (BETWEEN grille bottom and bumper top): missing or collapsed? Mechanical components exposed?
+- Bumper: alignment as whole unit (crooked = prior impact), surface condition, end caps (step vans), corner separation (Transits)
+- Cab cheek panels (both sides, between headlight and wheel arch): crease or dent?
+- A-pillar to cab panel junction (both sides, below windshield): impact dent?
+- Headlights/taillights: cracks, broken lenses, moisture — flag oxidation ONLY if clearly visible
+- Roof marker lights (Transits): all three front lights — cracked or missing lens?
+- Front panel above windshield: paint loss, chips, damage
 
 ROOF:
-- Dents, depressions, creases — especially above cab and front edge seam
-- Roof marker/clearance lights: cracked or missing
-- Antenna: bent or missing
-- Seam weld corners: check for cracking or separation
+- Front edge seam (both corners): corrosion, damage, separation
+- Full-length side seams (both sides): separation, lifting, damage along entire length
+- Rear top seam flashing (full width): separation, lifting, rust staining
+- Roof surface: dents, depressions, low-clearance damage (Transits: look for subtle ripples)
+- Clearance/marker lights: cracked, missing
 
-FRONT BUMPER (always check both):
-- Alignment: is the bumper straight and level as a whole unit? Crooked = prior impact
-- Surface condition: scrapes, deformation, cracks
+SIDES (scan full length of both sides):
+- Upper body panels: dents, scrapes, impact damage
+- Lower body panels (full length): dock contact scrapes — scan for tonal variation along ENTIRE lower 18 inches
+- Sub-12-inch zone: flag any tonal irregularity for physical verification
+- Step rail/rocker trim (Transits): damage along full length
+- Area above front tires (both sides, step vans): scrapes, dents
+- Mirrors: glass condition AND housing condition separately
 
-MIRRORS:
-- Inspect glass AND housing separately
-- Missing glass, cracked glass, broken housing, missing housing
+REAR:
+- Upper rear corners (BOTH sides): dents — if one is dented, check the other
+- Rear roof seam flashing: lifting, separation, rust
+- Rear cargo door vertical edges (step vans): bending or deformation full length
+- Rear cargo door hardware: handle, latch, hinges
+- Rear bumper: dock strikes, deformation, paint condition
+- Rear step platform corners: deformation, bending
+- Reflectors: all present, intact, no cracks
 
-GLASS & LIGHTS:
-- Windshield: cracks, chips, star breaks
-- Headlights/taillights: cracks, broken lenses, moisture intrusion
-- Turn signals, marker lights, clearance lights: condition
-- Headlight oxidation: flag ONLY if clearly visible in this photo
+BRANDING / DECALS:
+- Tears, peeling, missing sections
+- Damage visible through or beneath graphic areas`
 
-REFLECTORS (DOT COMPLIANCE):
-- Check all reflectors: front, side, rear
-- Partially missing, cracked, or non-reflective = DOT issue = moderate severity
-
-DOORS:
-- Door edge dings and scrapes
-- Sliding cargo door track (Sprinters/Transits): deformation, damage
-- Rear cargo doors: seal condition, latch condition, alignment
-- Entry steps: bent, broken, or missing
-
-TIRES & WHEELS:
-- Tire sidewall: cuts, bulges, damage (NOT normal oxidation on rotors)
-- Rims: curb rash, bends, cracks
-- Hubcaps: missing or cracked
-
-BRANDING:
-- Decal/wrap tears, peeling, or missing sections
-
-STRUCTURAL:
-- Frame or cross member damage
-- Major collision evidence
-- Box trucks: inspect undercarriage cross members and frame rails`
-
-  const interiorChecklist = `INTERIOR/CARGO INSPECTION CHECKLIST — REPORT DAMAGE ONLY. Do not comment on undamaged areas.
+  const interiorChecklist = `INTERIOR/CARGO INSPECTION — REPORT DAMAGE ONLY.
 
 DASHBOARD:
-- Warning lights illuminated (list each individually)
-- Cracked dash, damaged controls or switches
+- Warning lights illuminated (list each)
+- Cracked dash, damaged controls
 
 CARGO AREA:
-- Floor-mounted step/threshold plate: bent, broken, loose, or missing
-- Tie-down track: damage, missing anchors
-- Cargo floor: punctures, major damage (ignore light cosmetic scuffing)
-- Cargo walls/ceiling: dents, holes, tears in panels (ignore light cosmetic scuffing)`
+- Floor step/threshold plate: bent, broken, loose, missing
+- Tie-down tracks: damage, missing anchors
+- Cargo floor: punctures, major damage (ignore light scuffing)
+- Walls/ceiling: dents, holes, tears (ignore light scuffing)`
 
   const checklist = photoGroup === 'interior' ? interiorChecklist : exteriorChecklist
 
   const rentalNote = isRental
-    ? `\nRENTAL VEHICLE — HEIGHTENED SENSITIVITY: Every finding is legal and financial evidence. Document even minor scuffs and chips. Do not round down severity.`
+    ? `\nRENTAL — HEIGHTENED SENSITIVITY: Every finding is legal/financial evidence. Document even minor scuffs and chips. Do not round down severity.`
     : ''
 
   const baselineInstructions = hasBaseline
     ? `FOLLOW-UP INSPECTION — COMPARISON MODE:
-Compare each finding against the baseline damage list below.
-- Mark is_new: true ONLY for damage that does NOT appear in the baseline
-- For existing damage, flag if it has worsened (larger, deeper, new rust, etc.)
-- Do NOT re-flag baseline damage as new
-- Do flag even small changes to existing damage`
+- Mark is_new: true ONLY for damage NOT in the baseline list below
+- Flag any existing damage that has worsened (larger, deeper, new rust, etc.)
+- Do NOT re-flag baseline damage as new`
     : `BASELINE INSPECTION — INITIAL DOCUMENTATION MODE:
-This is the legal baseline for all future comparisons. Document ALL damage thoroughly, including minor items.
-Capture precise locations, dimensions, and descriptions. When in doubt, include it.`
+This is the legal baseline for all future comparisons. Document ALL damage including minor items. When in doubt, include it.`
 
-  return `You are an expert commercial fleet damage inspector for FedEx delivery vehicles operated by Bryke Logistics, Fort Lauderdale, FL. Your findings are used for driver accountability, DOT compliance, and legal documentation.
+  return `You are an expert commercial fleet damage inspector for FedEx delivery vehicles operated by Bryke Logistics, Fort Lauderdale FL. Findings are used for driver accountability, DOT compliance, and legal documentation.
 
 VEHICLE: ${truckInfo}
 VEHICLE TYPE: ${vehicleContext}
 INSPECTION TYPE: ${inspectionType}
 INSPECTOR: ${inspector}
-INSPECTOR NOTES: ${notes || 'None'}${baselineText}
+NOTES: ${notes || 'None'}${baselineText}
 ${rentalNote}
 
 ${ORIENTATION}
@@ -219,31 +280,30 @@ ${DAMAGE_KNOWLEDGE}
 
 ${checklist}
 
-SEVERITY DEFINITIONS:
-- critical: structural damage, safety hazard, DOT compliance failure, major collision damage, frame damage
-- moderate: fist-size or larger dent, paint scraped to bare metal, cracked lens, missing trim, mirror damage, bubbling/flaking rust, DOT reflector issue, bumper misalignment
+SEVERITY:
+- critical: structural damage, safety hazard, DOT failure, major collision, frame damage, missing fascia exposing mechanical components
+- moderate: fist-size+ dent, paint to bare metal, cracked lens, missing trim, mirror damage, bumping/flaking rust, DOT reflector issue, bumper misalignment, seam separation, bumper corner separation
 - minor: surface scuff (paint intact), door ding under fist-size, paint chip, light curb rash, surface corrosion without bubbling
 
-CONFIDENCE AND VERIFICATION:
-- Rate your confidence 0–100 for each finding
-- Any finding under 70 confidence MUST include a note: "Requires physical verification — [reason]"
-- For uncertain deformation on curved panels, use "possible deformation — verify with close-up"
+CONFIDENCE:
+- Rate 0–100 per finding
+- Under 70: add needsVerification: true and verificationNote explaining why
 
-REPAIR ESTIMATES:
-- Provide USA commercial vehicle repair cost range in USD
-- Determine repair method: DIY (mirrors, lights, moldings, trim, bumper covers, steps, hubcaps, reflectors) vs Shop (frame, major panels, roof, windshield, structural)
+REPAIR ESTIMATES (USD, commercial vehicle rates):
+- DIY: mirrors, lights, trim, moldings, bumper covers, steps, hubcaps, reflectors, door handles, step rails
+- Shop: frame, major panels, roof, windshield, structural, seam repair
 
-Respond ONLY in valid JSON with NO markdown, NO code fences, NO commentary before or after:
+Respond ONLY in valid JSON, no markdown, no code fences:
 {
   "overallCondition": "Good|Fair|Poor|Critical",
-  "summary": "2–3 sentence professional summary of overall vehicle condition",
+  "summary": "2–3 sentence professional summary",
   "totalEstimatedRepairCost": { "low": 0, "high": 0 },
   "damages": [
     {
       "severity": "critical|moderate|minor",
-      "location": "precise location using driver side / passenger side terminology, with zone (front, mid, rear)",
-      "description": "detailed description including size/dimensions, surface condition, paint status, and full extent of damage zone",
-      "recommendation": "specific repair recommendation",
+      "location": "precise location using driver/passenger side + zone",
+      "description": "detailed description with size, paint status, full extent of damage zone",
+      "recommendation": "specific repair action",
       "is_new": false,
       "confidence": 85,
       "needsVerification": false,
@@ -259,6 +319,9 @@ Respond ONLY in valid JSON with NO markdown, NO code fences, NO commentary befor
 }`
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DEDUPLICATION
+// ─────────────────────────────────────────────────────────────────────────────
 function deduplicateDamages(damages1: any[], damages2: any[]): any[] {
   const all = [...damages1, ...damages2]
   const deduped: any[] = []
@@ -266,18 +329,13 @@ function deduplicateDamages(damages1: any[], damages2: any[]): any[] {
   for (const d of all) {
     const dLoc = (d.location || '').toLowerCase()
     const dDesc = (d.description || '').toLowerCase()
-    // Extract meaningful location keywords (skip short words)
     const dLocWords = dLoc.split(/\s+/).filter((w: string) => w.length > 3)
 
     const duplicateIdx = deduped.findIndex(existing => {
       const eLoc = (existing.location || '').toLowerCase()
       const eDesc = (existing.description || '').toLowerCase()
-
-      // Location overlap: at least 2 meaningful words in common
       const locWordMatches = dLocWords.filter((w: string) => eLoc.includes(w)).length
       if (locWordMatches < 2) return false
-
-      // Description similarity: first 4 meaningful words overlap
       const dDescWords = dDesc.split(/\s+/).filter((w: string) => w.length > 3).slice(0, 4)
       const descOverlap = dDescWords.filter((w: string) => eDesc.includes(w)).length
       return descOverlap >= 2
@@ -286,7 +344,6 @@ function deduplicateDamages(damages1: any[], damages2: any[]): any[] {
     if (duplicateIdx === -1) {
       deduped.push(d)
     } else {
-      // Keep the higher-confidence version
       if ((d.confidence || 0) > (deduped[duplicateIdx].confidence || 0)) {
         deduped[duplicateIdx] = d
       }
@@ -296,15 +353,15 @@ function deduplicateDamages(damages1: any[], damages2: any[]): any[] {
   return deduped
 }
 
-async function analyzePhotos(
-  images: any[],
-  prompt: string
-): Promise<any> {
+// ─────────────────────────────────────────────────────────────────────────────
+// AI ANALYSIS CALL
+// ─────────────────────────────────────────────────────────────────────────────
+async function analyzePhotos(images: any[], prompt: string): Promise<any> {
   const content: any[] = []
   for (const img of images) {
     content.push({
       type: 'image',
-      source: { type: 'base64', media_type: img.media_type || 'image/jpeg', data: img.data }
+      source: { type: 'base64', media_type: img.media_type || 'image/jpeg', data: img.data },
     })
   }
   content.push({ type: 'text', text: prompt })
@@ -321,7 +378,6 @@ async function analyzePhotos(
   try {
     return JSON.parse(clean)
   } catch {
-    // Attempt to recover truncated JSON
     let fixed = clean
     const lastComplete = fixed.lastIndexOf('},')
     if (lastComplete > 0) {
@@ -337,6 +393,9 @@ async function analyzePhotos(
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN HANDLER
+// ─────────────────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -368,8 +427,6 @@ export async function POST(req: NextRequest) {
         : 'Sprinter / Cargo Van (Ford Transit, Mercedes Sprinter, Ram ProMaster)'
 
     const allImages = images || []
-
-    // Exterior = first 8 photos, interior = photos 9+ (rentals have 10 shots)
     const exteriorImages = allImages.filter((_: any, i: number) => i < 8)
     const interiorImages = allImages.filter((_: any, i: number) => i >= 8)
 
@@ -377,21 +434,17 @@ export async function POST(req: NextRequest) {
     const group1 = exteriorImages.slice(0, mid)
     const group2 = exteriorImages.slice(mid)
 
-    // Build prompts
-    const promptArgs: [string, string, string, string, string, string, string, boolean, boolean, 'exterior' | 'interior'] = [
+    const promptArgs: [string, string, string, string, string, string, string, boolean, boolean, 'exterior'] = [
       truckInfo, vehicleContext, vehicleType || '', inspectionType,
-      inspector, notes, baselineText, hasBaseline, isRental, 'exterior'
+      inspector, notes, baselineText, hasBaseline, isRental, 'exterior',
     ]
     const prompt1 = buildPrompt(...promptArgs)
     const prompt2 = buildPrompt(...promptArgs)
     const prompt3 = interiorImages.length > 0
-      ? buildPrompt(
-          truckInfo, vehicleContext, vehicleType || '', inspectionType,
-          inspector, notes, baselineText, hasBaseline, isRental, 'interior'
-        )
+      ? buildPrompt(truckInfo, vehicleContext, vehicleType || '', inspectionType,
+          inspector, notes, baselineText, hasBaseline, isRental, 'interior')
       : null
 
-    // Run analyses in parallel
     const analysisPromises: Promise<any>[] = [
       analyzePhotos(group1, prompt1),
       analyzePhotos(group2, prompt2),
@@ -410,17 +463,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Merge and deduplicate damage findings
-    const damages1 = result1?.damages || []
-    const damages2 = result2?.damages || []
-    const damages3 = result3?.damages || []
-
     const allDamages = deduplicateDamages(
-      deduplicateDamages(damages1, damages2),
-      damages3
+      deduplicateDamages(result1?.damages || [], result2?.damages || []),
+      result3?.damages || []
     )
 
-    // Sort: critical → moderate → minor, then by confidence descending
     allDamages.sort((a, b) => {
       const sevOrder: Record<string, number> = { critical: 0, moderate: 1, minor: 2 }
       const sevDiff = (sevOrder[a.severity] ?? 2) - (sevOrder[b.severity] ?? 2)
@@ -428,35 +475,28 @@ export async function POST(req: NextRequest) {
       return (b.confidence || 0) - (a.confidence || 0)
     })
 
-    // Count items needing verification
     const lowConfidenceCount = allDamages.filter(d => (d.confidence || 100) < 70).length
     const needsVerificationCount = allDamages.filter(d => d.needsVerification).length
-
-    // Aggregate repair costs
     const totalLow = allDamages.reduce((sum, d) => sum + (d.repairEstimate?.low || 0), 0)
     const totalHigh = allDamages.reduce((sum, d) => sum + (d.repairEstimate?.high || 0), 0)
 
-    // Use worst overall condition across both results
     const conditionOrder = ['Critical', 'Poor', 'Fair', 'Good']
     const condition1 = result1?.overallCondition || 'Good'
     const condition2 = result2?.overallCondition || 'Good'
-    const worstIdx = Math.min(
+    const overallCondition = conditionOrder[Math.min(
       conditionOrder.indexOf(condition1),
       conditionOrder.indexOf(condition2)
-    )
-    const overallCondition = conditionOrder[worstIdx] || condition1
+    )] || condition1
 
-    // Use most urgent repair urgency across both results
     const urgencyOrder = ['Immediate', 'Within 1 week', 'Within 1 month', 'Monitoring only']
     const urgency1 = result1?.estimatedRepairUrgency || 'Monitoring only'
     const urgency2 = result2?.estimatedRepairUrgency || 'Monitoring only'
-    const urgencyIdx = Math.min(
+    const estimatedRepairUrgency = urgencyOrder[Math.min(
       urgencyOrder.indexOf(urgency1),
       urgencyOrder.indexOf(urgency2)
-    )
-    const estimatedRepairUrgency = urgencyOrder[urgencyIdx] || urgency1
+    )] || urgency1
 
-    const merged = {
+    return NextResponse.json({
       overallCondition,
       summary: result1?.summary || result2?.summary || '',
       totalEstimatedRepairCost: { low: totalLow, high: totalHigh },
@@ -470,9 +510,7 @@ export async function POST(req: NextRequest) {
       lowConfidenceFindings: lowConfidenceCount,
       needsVerificationFindings: needsVerificationCount,
       _truncated: result1?._truncated || result2?._truncated,
-    }
-
-    return NextResponse.json(merged)
+    })
   } catch (err: any) {
     console.error('Analyze error:', err)
     return NextResponse.json({ error: err.message || 'Analysis failed' }, { status: 500 })
