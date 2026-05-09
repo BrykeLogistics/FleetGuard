@@ -47,7 +47,7 @@ function InspectContent() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [savedInspectionId, setSavedInspectionId] = useState('')
-  const { profile, isDriver } = useProfile()
+  const { profile, isDriver, loading: profileLoading } = useProfile()
   const [missedDamage, setMissedDamage] = useState('')
   const [acknowledged, setAcknowledged] = useState(false)
   const [error, setError] = useState('')
@@ -55,8 +55,8 @@ function InspectContent() {
 
   // ── CHANGED: wait for profile to resolve before loading trucks ──
   useEffect(() => {
-    if (profile !== undefined) loadTrucks()
-  }, [profile])
+  if (!loading) loadTrucks()
+}, [loading])
 
   // ── CHANGED: drivers see trucks matching their CSA, owners/managers see their fleet ──
   async function loadTrucks() {
