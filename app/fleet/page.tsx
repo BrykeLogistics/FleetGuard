@@ -215,12 +215,13 @@ export default function FleetPage() {
       supabase.from('inspection_photos').select('*').eq('truck_id', truck.id).order('created_at', { ascending: false }).limit(20),
     ])
     setTruckDetail({ inspections: inspRes.data || [], damages: dmgRes.data || [], photos: photoRes.data || [] })
-    const urls: {[key:string]:string} = {}
-    for (const p of (photoRes.data || [])) {
-      const { data } = await supabase.storage.from('inspection-photos').createSignedUrl(p.storage_path, 3600)
-      if (data?.signedUrl) urls[p.id] = data.signedUrl
-    }
-    setPhotoUrls(urls)
+   const urlEntries = await Promise.all(
+  (photoRes.data || []).map(async (p: any) => {
+    const { data } = await supabase.storage.from('inspection-photos').createSignedUrl(p.storage_path, 3600)
+    return [p.id, data?.signedUrl || ''] as [string, string]
+  })
+)
+setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)))
     setLoadingDetail(false)
   }
 
