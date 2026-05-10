@@ -282,10 +282,7 @@ function InspectContent() {
 
   async function saveInspection() {
     if (!result || !selectedTruck) return
-    setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data: insp } = await supabase.from('inspections').insert({
+    setSaving(true)const { data: insp, error: inspError } = await supabase.from('inspections').insert({
       truck_id: selectedTruck,
       inspector_name: inspector || 'Unknown',
       inspection_type: inspType,
@@ -301,6 +298,13 @@ function InspectContent() {
       locked: false,
       user_id: user.id,
     }).select().single()
+
+    if (inspError) {
+      console.error('inspection insert error:', inspError)
+      setSaving(false)
+      setError(inspError.message)
+      return
+    }
 
     if (insp) {
       if (result.damages?.length > 0) {
