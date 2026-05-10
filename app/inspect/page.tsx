@@ -75,7 +75,7 @@ function InspectContent() {
       const { data } = await supabase
         .from('trucks')
         .select('*')
-        .eq('location', profileData.csa)
+        .eq('csa', profileData.csa)
         .order('truck_number')
 
       setTrucks(data || [])
