@@ -944,7 +944,7 @@ function InspectContent() {
           {!saved ? (
             <button
               onClick={saveInspection}
-              disabled={saving || (isDriver && !acknowledged)}
+              disabled={saving}
               style={{ width: '100%', padding: '14px', background: saving ? '#aaa' : '#185FA5', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer' }}
             >
               {saving ? 'Saving...' : 'Submit inspection'}
