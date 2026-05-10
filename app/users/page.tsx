@@ -99,7 +99,7 @@ export default function UsersPage() {
                 <div><label>Full name *</label><input value={form.full_name} onChange={e => setForm({...form, full_name:e.target.value})} placeholder="e.g. Carlos Martinez" required /></div>
                 <div>
                   <label>Role *</label>
-                  <select value={form.role} onChange={e => setForm({...form, role:e.target.value})}>
+                  <select value={form.role} onChange={e => setForm({...form, role:e.target.value, csa: e.target.value === 'driver' ? form.csa : ''})}>
                     <option value="driver">Driver</option>
                     <option value="manager">Manager</option>
                     <option value="owner">Owner</option>
