@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Navbar from '../components/Navbar'
 import Link from 'next/link'
@@ -92,7 +92,7 @@ function ListTable({ trucks, onOpen, onEdit }: any) {
   )
 }
 
-// ── TruckForm — defined OUTSIDE FleetPage so it never remounts on state change ──
+// ── TruckForm ──────────────────────────────────────────────────────
 interface FormProps {
   form: typeof emptyForm
   setForm: (f: typeof emptyForm) => void
@@ -112,7 +112,6 @@ function TruckForm({ form, setForm, onSubmit, onCancel, saving, editingId, vinLo
     <div className="card" style={{ padding:'20px', marginBottom:16, border: editingId ? '1.5px solid #185FA5' : undefined }}>
       <div style={{ fontSize:14, fontWeight:500, marginBottom:16 }}>{editingId ? 'Edit truck' : 'Add new truck'}</div>
       <form onSubmit={onSubmit}>
-        {/* Fleet type toggle */}
         <div style={{ display:'flex', gap:8, marginBottom:16 }}>
           <button type="button" onClick={() => setForm({...form, fleet_type:'owned'})} style={{ flex:1, padding:'10px', borderRadius:10, border: form.fleet_type==='owned' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: form.fleet_type==='owned' ? '#E6F1FB' : 'white', cursor:'pointer', fontSize:13, fontWeight:500, color: form.fleet_type==='owned' ? '#0C447C' : '#555' }}>🚛 Owned vehicle</button>
           <button type="button" onClick={() => setForm({...form, fleet_type:'rental'})} style={{ flex:1, padding:'10px', borderRadius:10, border: form.fleet_type==='rental' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: form.fleet_type==='rental' ? '#FAEEDA' : 'white', cursor:'pointer', fontSize:13, fontWeight:500, color: form.fleet_type==='rental' ? '#633806' : '#555' }}>📋 Rental vehicle</button>
@@ -166,7 +165,10 @@ function TruckForm({ form, setForm, onSubmit, onCancel, saving, editingId, vinLo
 }
 
 // ── Main FleetPage ─────────────────────────────────────────────────
-export default function FleetPage() {
+function FleetPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   const [trucks, setTrucks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'owned'|'rental'|'csa'>('owned')
@@ -183,18 +185,20 @@ export default function FleetPage() {
   const [photoUrls, setPhotoUrls] = useState<{[key:string]:string}>({})
   const [csaFilter, setCsaFilter] = useState('all')
   const [lightboxIndex, setLightboxIndex] = useState<number|null>(null)
-
-  const searchParams = useSearchParams()
   const [activeFilter, setActiveFilter] = useState<string|null>(null)
+
   useEffect(() => { loadTrucks() }, [])
 
   async function loadTrucks() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { data } = await supabase.from('trucks').select('*, inspections(id, created_at, overall_condition, follow_up_required, is_baseline)').eq('user_id', user.id).order('truck_number')
+    const { data } = await supabase
+      .from('trucks')
+      .select('*, inspections(id, created_at, overall_condition, follow_up_required, is_baseline)')
+      .eq('user_id', user.id)
+      .order('truck_number')
     setTrucks(data || [])
     setLoading(false)
-    // Auto-open truck if ?truck=ID in URL
     const truckId = searchParams.get('truck')
     if (truckId && data) {
       const truck = data.find((t: any) => t.id === truckId)
@@ -207,25 +211,27 @@ export default function FleetPage() {
   async function openTruck(truck: any) {
     setSelectedTruck(truck)
     setLoadingDetail(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
     const [inspRes, dmgRes, photoRes] = await Promise.all([
       supabase.from('inspections').select('*').eq('truck_id', truck.id).order('created_at', { ascending: false }),
       supabase.from('damages').select('*, inspections(created_at, inspection_type)').eq('truck_id', truck.id).order('created_at', { ascending: false }),
       supabase.from('inspection_photos').select('*').eq('truck_id', truck.id).order('created_at', { ascending: false }).limit(20),
     ])
     setTruckDetail({ inspections: inspRes.data || [], damages: dmgRes.data || [], photos: photoRes.data || [] })
-   const urlEntries = await Promise.all(
-  (photoRes.data || []).map(async (p: any) => {
-    const { data } = await supabase.storage.from('inspection-photos').createSignedUrl(p.storage_path, 3600)
-    return [p.id, data?.signedUrl || ''] as [string, string]
-  })
-)
-setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)))
+    const urlEntries = await Promise.all(
+      (photoRes.data || []).map(async (p: any) => {
+        const { data } = await supabase.storage.from('inspection-photos').createSignedUrl(p.storage_path, 3600)
+        return [p.id, data?.signedUrl || ''] as [string, string]
+      })
+    )
+    setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)))
     setLoadingDetail(false)
   }
 
-  function closeTruck() { setSelectedTruck(null); setTruckDetail({ inspections:[], damages:[], photos:[] }); setPhotoUrls({}) }
+  function closeTruck() {
+    setSelectedTruck(null)
+    setTruckDetail({ inspections:[], damages:[], photos:[] })
+    setPhotoUrls({})
+  }
 
   async function lookupVin() {
     const vin = form.vin
@@ -313,10 +319,16 @@ setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)))
   const noCsaTrucks = trucks.filter(t => !t.csa)
   const showForm = showAdd || editingId !== null
 
-  const cardProps = { editingId, showForm, onOpen: openTruck, onEdit: startEdit, onDelete: deleteTruck, onInspect: (id: string) => window.location.href = `/inspect?truck=${id}` }
+  const cardProps = {
+    editingId, showForm,
+    onOpen: openTruck,
+    onEdit: startEdit,
+    onDelete: deleteTruck,
+    onInspect: (id: string) => router.push(`/inspect?truck=${id}`),
+  }
   const formProps = { form, setForm, onSubmit: saveTruck, onCancel: cancelEdit, saving, editingId, vinLoading, vinMessage, csaList, onLookupVin: lookupVin }
 
-  // ── Truck detail panel ──────────────────────────────────────────
+  // ── Truck detail panel ─────────────────────────────────────────
   if (selectedTruck) {
     const { inspections, damages, photos } = truckDetail
     const newDamages = damages.filter(d => d.is_new)
@@ -352,10 +364,15 @@ setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)))
               </div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(120px,1fr))', gap:10, marginTop:16 }}>
-              {[{label:'Inspections',value:inspections.length},{label:'New damages',value:newDamages.length,color:newDamages.length>0?'#A32D2D':'#27500A'},{label:'Total damages',value:damages.length},{label:'Last inspected',value:inspections[0]?new Date(inspections[0].created_at).toLocaleDateString():'Never'}].map(s => (
+              {[
+                { label:'Inspections', value:inspections.length },
+                { label:'New damages', value:newDamages.length, color:newDamages.length>0?'#A32D2D':'#27500A' },
+                { label:'Total damages', value:damages.length },
+                { label:'Last inspected', value:inspections[0] ? new Date(inspections[0].created_at).toLocaleDateString() : 'Never' },
+              ].map(s => (
                 <div key={s.label} style={{ background:'#f7f7f6', borderRadius:8, padding:'12px' }}>
                   <div style={{ fontSize:11, color:'#888', marginBottom:4 }}>{s.label}</div>
-                  <div style={{ fontSize:16, fontWeight:600, color:(s as any).color||'#1a1a1a' }}>{loadingDetail?'—':s.value}</div>
+                  <div style={{ fontSize:16, fontWeight:600, color:(s as any).color||'#1a1a1a' }}>{loadingDetail ? '—' : s.value}</div>
                 </div>
               ))}
             </div>
@@ -363,70 +380,88 @@ setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)))
 
           {!loadingDetail && <PhotoStrip photos={photos.map((p, i) => ({ url: photoUrls[p.id] || '', label: `Photo ${i+1}`, date: new Date(p.created_at).toLocaleDateString() }))} />}
           {loadingDetail && <div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading...</div>}
+
           {!loadingDetail && (
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
               <div className="card" style={{ padding:'16px', gridColumn:'1/-1' }}>
                 <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Photos ({photos.length})</div>
-                {photos.length === 0 ? <div style={{ color:'#aaa', fontSize:13, padding:'20px 0', textAlign:'center' }}>No photos yet</div> : (
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px,1fr))', gap:8 }}>
-                    {photos.map((p, i) => (
-                      <div key={p.id}>
-                        {photoUrls[p.id]
-                          ? <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', cursor:'pointer' }} onClick={() => setLightboxIndex(i)} />
-                          : <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>}
-                        <div style={{ fontSize:10, color:'#aaa', marginTop:3, textAlign:'center' }}>{new Date(p.created_at).toLocaleDateString()}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {photos.length === 0
+                  ? <div style={{ color:'#aaa', fontSize:13, padding:'20px 0', textAlign:'center' }}>No photos yet</div>
+                  : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(130px,1fr))', gap:8 }}>
+                      {photos.map((p, i) => (
+                        <div key={p.id}>
+                          {photoUrls[p.id]
+                            ? <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', cursor:'pointer' }} onClick={() => setLightboxIndex(i)} />
+                            : <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>}
+                          <div style={{ fontSize:10, color:'#aaa', marginTop:3, textAlign:'center' }}>{new Date(p.created_at).toLocaleDateString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                }
               </div>
 
               <div className="card" style={{ padding:'16px' }}>
                 <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Inspection history ({inspections.length})</div>
-                {inspections.length === 0 ? <div style={{ color:'#aaa', fontSize:13, padding:'16px 0', textAlign:'center' }}>No inspections yet</div> : inspections.map(insp => (
-                  <div key={insp.id} style={{ padding:'10px 0', borderBottom:'0.5px solid rgba(0,0,0,0.07)' }}>
-                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
-                      <div>
-                        <div style={{ fontSize:13, fontWeight:500 }}>{insp.inspection_type} {insp.is_baseline && <span style={{ fontSize:10, background:'#E6F1FB', color:'#0C447C', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>baseline</span>}</div>
-                        <div style={{ fontSize:11, color:'#888', marginTop:2 }}>{new Date(insp.created_at).toLocaleDateString()} · {insp.inspector_name}</div>
-                        {insp.summary && <div style={{ fontSize:11, color:'#555', marginTop:3, lineHeight:1.5 }}>{insp.summary}</div>}
+                {inspections.length === 0
+                  ? <div style={{ color:'#aaa', fontSize:13, padding:'16px 0', textAlign:'center' }}>No inspections yet</div>
+                  : inspections.map(insp => (
+                    <div key={insp.id} style={{ padding:'10px 0', borderBottom:'0.5px solid rgba(0,0,0,0.07)' }}>
+                      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
+                        <div>
+                          <div style={{ fontSize:13, fontWeight:500 }}>
+                            {insp.inspection_type}
+                            {insp.is_baseline && <span style={{ fontSize:10, background:'#E6F1FB', color:'#0C447C', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>baseline</span>}
+                          </div>
+                          <div style={{ fontSize:11, color:'#888', marginTop:2 }}>{new Date(insp.created_at).toLocaleDateString()} · {insp.inspector_name}</div>
+                          {insp.summary && <div style={{ fontSize:11, color:'#555', marginTop:3, lineHeight:1.5 }}>{insp.summary}</div>}
+                        </div>
+                        <span className={`badge ${condBadge(insp.overall_condition)}`} style={{ flexShrink:0 }}>{insp.overall_condition}</span>
                       </div>
-                      <span className={`badge ${condBadge(insp.overall_condition)}`} style={{ flexShrink:0 }}>{insp.overall_condition}</span>
+                      <DamageFeedback inspectionId={insp.id} truckId={selectedTruck.id} onSubmitted={loadTrucks} />
                     </div>
-                    <DamageFeedback inspectionId={insp.id} truckId={selectedTruck.id} onSubmitted={loadTrucks} />
-                  </div>
-                ))}
+                  ))
+                }
               </div>
 
               <div className="card" style={{ padding:'16px' }}>
                 <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Damage log ({damages.length})</div>
-                {damages.length === 0 ? <div style={{ color:'#aaa', fontSize:13, padding:'16px 0', textAlign:'center' }}>No damage recorded</div> : damages.map(d => (
-                  <div key={d.id} style={{ border:'0.5px solid rgba(0,0,0,0.07)', borderRadius:8, marginBottom:8, overflow:'hidden' }}>
-                    <div style={{ display:'flex', gap:8, padding:'10px 12px' }}>
-                      <div style={{ width:8, height:8, borderRadius:'50%', background:sevDot(d.severity), marginTop:4, flexShrink:0 }} />
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontSize:13, fontWeight:500 }}>
-                          {d.location}
-                          {d.is_new && <span style={{ fontSize:10, background:'#FCEBEB', color:'#A32D2D', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>NEW</span>}
-                          {d.diy_replaceable && <span style={{ fontSize:10, background:'#EAF3DE', color:'#27500A', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>DIY</span>}
-                        </div>
-                        <div style={{ fontSize:11, color:'#555', marginTop:2 }}>{d.description}</div>
-                        {d.recommendation && <div style={{ fontSize:11, color:'#185FA5', marginTop:2 }}>→ {d.recommendation}</div>}
-                        {(d.repair_estimate_low > 0 || d.repair_estimate_high > 0) && (
-                          <div style={{ fontSize:11, color:'#633806', marginTop:3, fontWeight:500 }}>Est: ${d.repair_estimate_low?.toLocaleString()} – ${d.repair_estimate_high?.toLocaleString()}{d.repair_estimate_notes ? ` · ${d.repair_estimate_notes}` : ''}</div>
-                        )}
-                        {d.diy_replaceable && d.part_search_query && (
-                          <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:5 }}>
-                            <span style={{ fontSize:10, color:'#888' }}>Parts:</span>
-                            {[{name:'Amazon',url:`https://www.amazon.com/s?k=${encodeURIComponent(d.part_search_query)}&i=automotive`},{name:'RockAuto',url:`https://www.rockauto.com/en/partsgroup/${encodeURIComponent(d.part_search_query.split(' ').slice(0,4).join('+'))}`},{name:'eBay Motors',url:`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(d.part_search_query)}&_sacat=6000`}].map(link => (
-                              <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, fontWeight:500, color:'#185FA5', background:'#E6F1FB', padding:'2px 7px', borderRadius:20, textDecoration:'none' }}>{link.name} →</a>
-                            ))}
+                {damages.length === 0
+                  ? <div style={{ color:'#aaa', fontSize:13, padding:'16px 0', textAlign:'center' }}>No damage recorded</div>
+                  : damages.map(d => (
+                    <div key={d.id} style={{ border:'0.5px solid rgba(0,0,0,0.07)', borderRadius:8, marginBottom:8, overflow:'hidden' }}>
+                      <div style={{ display:'flex', gap:8, padding:'10px 12px' }}>
+                        <div style={{ width:8, height:8, borderRadius:'50%', background:sevDot(d.severity), marginTop:4, flexShrink:0 }} />
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:13, fontWeight:500 }}>
+                            {d.location}
+                            {d.is_new && <span style={{ fontSize:10, background:'#FCEBEB', color:'#A32D2D', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>NEW</span>}
+                            {d.diy_replaceable && <span style={{ fontSize:10, background:'#EAF3DE', color:'#27500A', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>DIY</span>}
                           </div>
-                        )}
+                          <div style={{ fontSize:11, color:'#555', marginTop:2 }}>{d.description}</div>
+                          {d.recommendation && <div style={{ fontSize:11, color:'#185FA5', marginTop:2 }}>→ {d.recommendation}</div>}
+                          {(d.repair_estimate_low > 0 || d.repair_estimate_high > 0) && (
+                            <div style={{ fontSize:11, color:'#633806', marginTop:3, fontWeight:500 }}>
+                              Est: ${d.repair_estimate_low?.toLocaleString()} – ${d.repair_estimate_high?.toLocaleString()}
+                              {d.repair_estimate_notes ? ` · ${d.repair_estimate_notes}` : ''}
+                            </div>
+                          )}
+                          {d.diy_replaceable && d.part_search_query && (
+                            <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginTop:5 }}>
+                              <span style={{ fontSize:10, color:'#888' }}>Parts:</span>
+                              {[
+                                { name:'Amazon', url:`https://www.amazon.com/s?k=${encodeURIComponent(d.part_search_query)}&i=automotive` },
+                                { name:'RockAuto', url:`https://www.rockauto.com/en/partsgroup/${encodeURIComponent(d.part_search_query.split(' ').slice(0,4).join('+'))}` },
+                                { name:'eBay Motors', url:`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(d.part_search_query)}&_sacat=6000` },
+                              ].map(link => (
+                                <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, fontWeight:500, color:'#185FA5', background:'#E6F1FB', padding:'2px 7px', borderRadius:20, textDecoration:'none' }}>{link.name} →</a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                }
               </div>
             </div>
           )}
@@ -435,7 +470,7 @@ setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)))
     )
   }
 
-  // ── Main fleet list ─────────────────────────────────────────────
+  // ── Main fleet list ────────────────────────────────────────────
   return (
     <div>
       <Navbar />
@@ -468,12 +503,18 @@ setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)))
             <button onClick={() => setActiveFilter(null)} style={{ background:'none', border:'none', color:'#555', cursor:'pointer', fontSize:12, textDecoration:'underline' }}>Show all</button>
           </div>
         )}
+
         {showForm && <TruckForm {...formProps} />}
         {loading && <div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading...</div>}
 
         {!loading && view === 'owned' && (
           <>
-            {ownedTrucks.length === 0 && !showForm && <div className="card" style={{ padding:'48px', textAlign:'center', color:'#888' }}><div style={{ fontSize:14, marginBottom:8 }}>No owned trucks yet</div><button className="btn btn-primary" onClick={() => setShowAdd(true)}>Add your first truck</button></div>}
+            {ownedTrucks.length === 0 && !showForm && (
+              <div className="card" style={{ padding:'48px', textAlign:'center', color:'#888' }}>
+                <div style={{ fontSize:14, marginBottom:8 }}>No owned trucks yet</div>
+                <button className="btn btn-primary" onClick={() => setShowAdd(true)}>Add your first truck</button>
+              </div>
+            )}
             {viewMode === 'grid' && <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(260px,1fr))', gap:12 }}>{ownedTrucks.map(t => <TruckCard key={t.id} truck={t} {...cardProps} />)}</div>}
             {viewMode === 'list' && <ListTable trucks={ownedTrucks} onOpen={openTruck} onEdit={startEdit} />}
           </>
@@ -497,7 +538,9 @@ setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)))
           <div>
             <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
               <button onClick={() => setCsaFilter('all')} style={{ padding:'5px 14px', borderRadius:20, fontSize:12, fontWeight:500, border: csaFilter==='all'?'1.5px solid #185FA5':'0.5px solid rgba(0,0,0,0.15)', background: csaFilter==='all'?'#E6F1FB':'white', color: csaFilter==='all'?'#0C447C':'#555', cursor:'pointer' }}>All CSAs</button>
-              {csaList.map(csa => <button key={csa} onClick={() => setCsaFilter(csa)} style={{ padding:'5px 14px', borderRadius:20, fontSize:12, fontWeight:500, border: csaFilter===csa?'1.5px solid #185FA5':'0.5px solid rgba(0,0,0,0.15)', background: csaFilter===csa?'#E6F1FB':'white', color: csaFilter===csa?'#0C447C':'#555', cursor:'pointer' }}>{csa}</button>)}
+              {csaList.map(csa => (
+                <button key={csa} onClick={() => setCsaFilter(csa)} style={{ padding:'5px 14px', borderRadius:20, fontSize:12, fontWeight:500, border: csaFilter===csa?'1.5px solid #185FA5':'0.5px solid rgba(0,0,0,0.15)', background: csaFilter===csa?'#E6F1FB':'white', color: csaFilter===csa?'#0C447C':'#555', cursor:'pointer' }}>{csa}</button>
+              ))}
             </div>
             {csaFilter === 'all' ? (
               <div>
@@ -523,4 +566,8 @@ setPhotoUrls(Object.fromEntries(urlEntries.filter(([, url]) => url)))
       </div>
     </div>
   )
+}
+
+export default function FleetPageWrapper() {
+  return <Suspense fallback={<div />}><FleetPage /></Suspense>
 }
