@@ -49,11 +49,9 @@ function InspectContent() {
   const [savedInspectionId, setSavedInspectionId] = useState('')
   const { profile, isDriver, loading: profileLoading } = useProfile()
   const [missedDamage, setMissedDamage] = useState('')
-  const [acknowledged, setAcknowledged] = useState(false)
   const [error, setError] = useState('')
   const [showGuided, setShowGuided] = useState(false)
 
-  // Wait for profile to finish loading, then load trucks based on role
   useEffect(() => {
     if (!profileLoading) loadTrucks()
   }, [profileLoading])
@@ -63,30 +61,15 @@ function InspectContent() {
     if (!user) return
 
     if (isDriver) {
-      // Drivers: load trucks where truck location (CSA) matches driver's CSA
       const { data: profileData } = await supabase
-        .from('profiles')
-        .select('csa')
-        .eq('id', user.id)
-        .single()
-
+        .from('profiles').select('csa').eq('id', user.id).single()
       if (!profileData?.csa) return
-
       const { data } = await supabase
-        .from('trucks')
-        .select('*')
-        .eq('csa', profileData.csa)
-        .order('truck_number')
-
+        .from('trucks').select('*').eq('csa', profileData.csa).order('truck_number')
       setTrucks(data || [])
     } else {
-      // Owners/managers: load their full fleet
       const { data } = await supabase
-        .from('trucks')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('truck_number')
-
+        .from('trucks').select('*').eq('user_id', user.id).order('truck_number')
       setTrucks(data || [])
     }
   }
@@ -112,8 +95,7 @@ function InspectContent() {
     setVideoFile(file)
     setExtractedFrames([])
     setExtractProgress(0)
-    const url = URL.createObjectURL(file)
-    setVideoUrl(url)
+    setVideoUrl(URL.createObjectURL(file))
   }
 
   async function extractFrames() {
@@ -124,10 +106,7 @@ function InspectContent() {
     const video = videoRef.current
     video.src = videoUrl
     video.muted = true
-    await new Promise<void>(resolve => {
-      video.onloadedmetadata = () => resolve()
-      video.load()
-    })
+    await new Promise<void>(resolve => { video.onloadedmetadata = () => resolve(); video.load() })
     const duration = video.duration
     const interval = Math.max(duration / 8, 3)
     const timestamps: number[] = []
@@ -137,9 +116,8 @@ function InspectContent() {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')!
     for (let i = 0; i < timestamps.length; i++) {
-      const t = timestamps[i]
       await new Promise<void>(resolve => {
-        video.currentTime = t
+        video.currentTime = timestamps[i]
         video.onseeked = () => {
           canvas.width = Math.min(video.videoWidth, 1280)
           canvas.height = Math.round(video.videoHeight * (canvas.width / video.videoWidth))
@@ -165,10 +143,7 @@ function InspectContent() {
         audio: false,
       })
       setRecordingStream(stream)
-      if (recordingRef.current) {
-        recordingRef.current.srcObject = stream
-        recordingRef.current.play().catch(() => {})
-      }
+      if (recordingRef.current) { recordingRef.current.srcObject = stream; recordingRef.current.play().catch(() => {}) }
       chunksRef.current = []
       const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' :
         MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm'
@@ -177,9 +152,8 @@ function InspectContent() {
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: mimeType })
         const url = URL.createObjectURL(blob)
-        const file = new File([blob], 'recording.mp4', { type: mimeType })
         setLiveVideoUrl(url)
-        setVideoFile(file)
+        setVideoFile(new File([blob], 'recording.mp4', { type: mimeType }))
         setVideoUrl(url)
         setVideoSubMode('upload')
         stream.getTracks().forEach(t => t.stop())
@@ -198,8 +172,7 @@ function InspectContent() {
   function stopRecording() {
     mediaRecorder?.stop()
     setIsRecording(false)
-    if (timerRef.current) clearInterval(timerRef.current)
-    timerRef.current = null
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
   }
 
   function formatTime(s: number) {
@@ -212,8 +185,8 @@ function InspectContent() {
     setUploadMode('photo')
   }
 
-  const resizeImage = (dataUrl: string): Promise<string> => {
-    return new Promise(resolve => {
+  const resizeImage = (dataUrl: string): Promise<string> =>
+    new Promise(resolve => {
       const img = new Image()
       img.onload = () => {
         const canvas = document.createElement('canvas')
@@ -229,7 +202,6 @@ function InspectContent() {
       }
       img.src = dataUrl
     })
-  }
 
   async function runAnalysis() {
     const sourceFrames = uploadMode === 'video' ? extractedFrames : previews
@@ -247,7 +219,7 @@ function InspectContent() {
       baselineDamages = data || []
     }
     setAnalyzeStatus(`Preparing ${Math.min(sourceFrames.length, 8)} frames...`)
-    const images = await Promise.all(sourceFrames.slice(0, 8).map(async (p) => ({
+    const images = await Promise.all(sourceFrames.slice(0, 8).map(async p => ({
       media_type: 'image/jpeg',
       data: await resizeImage(p),
     })))
@@ -280,76 +252,100 @@ function InspectContent() {
     setAnalyzeStatus('')
   }
 
+  // ── Save inspection — parallel photo uploads for speed ──
   async function saveInspection() {
     if (!result || !selectedTruck) return
-    setSaving(true)const { data: insp, error: inspError } = await supabase.from('inspections').insert({
-      truck_id: selectedTruck,
-      inspector_name: inspector || 'Unknown',
-      inspection_type: inspType,
-      notes,
-      overall_condition: result.overallCondition,
-      summary: result.summary,
-      follow_up_required: result.followUpRequired,
-      repair_urgency: result.estimatedRepairUrgency,
-      is_baseline: isBaseline,
-      acknowledged: isDriver ? acknowledged : true,
-      acknowledged_by: profile?.full_name || inspector,
-      acknowledged_at: new Date().toISOString(),
-      locked: false,
-      user_id: user.id,
-    }).select().single()
+    setSaving(true)
+    setError('')
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setSaving(false); return }
+
+    // 1. Insert inspection record
+    const { data: insp, error: inspError } = await supabase
+      .from('inspections')
+      .insert({
+        truck_id: selectedTruck,
+        inspector_name: inspector || 'Unknown',
+        inspection_type: inspType,
+        notes,
+        overall_condition: result.overallCondition,
+        summary: result.summary,
+        follow_up_required: result.followUpRequired,
+        repair_urgency: result.estimatedRepairUrgency,
+        is_baseline: isBaseline,
+        acknowledged: true,
+        acknowledged_by: profile?.full_name || inspector,
+        acknowledged_at: new Date().toISOString(),
+        locked: false,
+        user_id: user.id,
+      })
+      .select()
+      .single()
 
     if (inspError) {
-      console.error('inspection insert error:', inspError)
-      setSaving(false)
+      console.error('Inspection insert error:', inspError)
       setError(inspError.message)
+      setSaving(false)
       return
     }
 
-    if (insp) {
-      if (result.damages?.length > 0) {
-        await supabase.from('damages').insert(
-          result.damages.map((d: any) => ({
-            inspection_id: insp.id, truck_id: selectedTruck,
-            severity: d.severity, location: d.location,
-            description: d.description, recommendation: d.recommendation || '',
-            is_new: d.is_new, user_id: user.id,
-            repair_estimate_low: d.repairEstimate?.low || 0,
-            repair_estimate_high: d.repairEstimate?.high || 0,
-            repair_estimate_notes: d.repairEstimate?.notes || '',
-            diy_replaceable: d.diyReplaceable || false,
-            part_name: d.partName || '',
-            part_search_query: d.partSearchQuery || '',
-          }))
-        )
-      }
-      const framesToSave = uploadMode === 'video' ? extractedFrames : previews
-      for (let i = 0; i < Math.min(framesToSave.length, 8); i++) {
+    // 2. Insert damage records (single batch)
+    if (result.damages?.length > 0) {
+      await supabase.from('damages').insert(
+        result.damages.map((d: any) => ({
+          inspection_id: insp.id,
+          truck_id: selectedTruck,
+          severity: d.severity,
+          location: d.location,
+          description: d.description,
+          recommendation: d.recommendation || '',
+          is_new: d.is_new,
+          user_id: user.id,
+          repair_estimate_low: d.repairEstimate?.low || 0,
+          repair_estimate_high: d.repairEstimate?.high || 0,
+          repair_estimate_notes: d.repairEstimate?.notes || '',
+          diy_replaceable: d.diyReplaceable || false,
+          part_name: d.partName || '',
+          part_search_query: d.partSearchQuery || '',
+        }))
+      )
+    }
+
+    // 3. Upload all photos in parallel
+    const framesToSave = (uploadMode === 'video' ? extractedFrames : previews).slice(0, 8)
+    const photoType = uploadMode === 'video' ? 'video_frame' : 'photo'
+
+    await Promise.all(
+      framesToSave.map(async (dataUrl, i) => {
         try {
-          const dataUrl = framesToSave[i]
           const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl
           const byteChars = atob(base64)
           const byteArr = new Uint8Array(byteChars.length)
           for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j)
           const blob = new Blob([byteArr], { type: 'image/jpeg' })
           const path = `${user.id}/${selectedTruck}/${insp.id}/photo_${i}.jpg`
-          const { error: uploadError } = await supabase.storage.from('inspection-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true })
+          const { error: uploadError } = await supabase.storage
+            .from('inspection-photos')
+            .upload(path, blob, { contentType: 'image/jpeg', upsert: true })
           if (!uploadError) {
             await supabase.from('inspection_photos').insert({
-              inspection_id: insp.id, truck_id: selectedTruck,
+              inspection_id: insp.id,
+              truck_id: selectedTruck,
               storage_path: path,
-              photo_type: uploadMode === 'video' ? 'video_frame' : 'photo',
+              photo_type: photoType,
               user_id: user.id,
             })
           }
-        } catch (photoErr) {
-          console.error('Photo upload error:', photoErr)
+        } catch (e) {
+          console.error(`Photo ${i} upload error:`, e)
         }
-      }
-    }
+      })
+    )
+
     setSaving(false)
     setSaved(true)
-    if (insp) setSavedInspectionId(insp.id)
+    setSavedInspectionId(insp.id)
   }
 
   const condColor = (c: string) =>
@@ -366,94 +362,37 @@ function InspectContent() {
       <style>{`
         @keyframes spin  { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
         .step-tab {
-          flex: 1;
-          padding: 10px 4px;
-          font-size: 12px;
-          font-weight: 500;
-          text-align: center;
-          cursor: pointer;
-          border-bottom: 2px solid transparent;
-          white-space: nowrap;
-          user-select: none;
-          -webkit-tap-highlight-color: transparent;
+          flex: 1; padding: 10px 4px; font-size: 12px; font-weight: 500;
+          text-align: center; cursor: pointer; border-bottom: 2px solid transparent;
+          white-space: nowrap; user-select: none; -webkit-tap-highlight-color: transparent;
         }
-        @media (min-width: 480px) {
-          .step-tab { font-size: 13px; padding: 10px 20px; flex: none; }
-        }
-
-        .media-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
-        }
-        @media (min-width: 480px) {
-          .media-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
-        }
-
+        @media (min-width: 480px) { .step-tab { font-size: 13px; padding: 10px 20px; flex: none; } }
+        .media-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        @media (min-width: 480px) { .media-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); } }
         .thumb-remove {
-          position: absolute;
-          top: 4px; right: 4px;
-          width: 28px; height: 28px;
-          border-radius: 50%;
-          background: rgba(0,0,0,0.65);
-          color: white;
-          border: none;
-          cursor: pointer;
-          font-size: 15px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          -webkit-tap-highlight-color: transparent;
+          position: absolute; top: 4px; right: 4px; width: 28px; height: 28px;
+          border-radius: 50%; background: rgba(0,0,0,0.65); color: white; border: none;
+          cursor: pointer; font-size: 15px; display: flex; align-items: center;
+          justify-content: center; -webkit-tap-highlight-color: transparent;
         }
-
         .capture-option {
-          border-radius: 12px;
-          padding: 16px;
-          margin-bottom: 10px;
-          cursor: pointer;
-          -webkit-tap-highlight-color: transparent;
-          display: block;
-          width: 100%;
-          box-sizing: border-box;
+          border-radius: 12px; padding: 16px; margin-bottom: 10px; cursor: pointer;
+          -webkit-tap-highlight-color: transparent; display: block; width: 100%; box-sizing: border-box;
         }
         .capture-option:active { opacity: 0.75; }
-
-        .results-layout {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
+        .results-layout { display: flex; flex-direction: column; gap: 12px; }
         .results-main { flex: 1; min-width: 0; }
-        @media (min-width: 640px) {
-          .results-layout { flex-direction: row; align-items: flex-start; }
-        }
-
+        @media (min-width: 640px) { .results-layout { flex-direction: row; align-items: flex-start; } }
         .photo-strip-wrapper { display: none; }
         @media (min-width: 640px) { .photo-strip-wrapper { display: block; } }
-
-        .action-row {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
+        .action-row { display: flex; flex-direction: column; gap: 10px; }
         @media (min-width: 480px) {
           .action-row { flex-direction: row; flex-wrap: wrap; }
           .action-row a, .action-row button { width: auto !important; }
         }
-        .action-row a, .action-row button {
-          width: 100% !important;
-          text-align: center !important;
-          box-sizing: border-box;
-        }
-
-        .part-links {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          align-items: center;
-        }
+        .action-row a, .action-row button { width: 100% !important; text-align: center !important; box-sizing: border-box; }
+        .part-links { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
       `}</style>
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 16px 100px' }}>
@@ -461,15 +400,12 @@ function InspectContent() {
         {/* Step tabs */}
         <div style={{ display: 'flex', marginBottom: 20, borderBottom: '0.5px solid rgba(0,0,0,0.1)' }}>
           {['1. Setup', '2. Media', '3. Results'].map((label, i) => (
-            <div
-              key={label}
-              className="step-tab"
+            <div key={label} className="step-tab"
               onClick={() => { if (i + 1 <= step) setStep(i + 1) }}
               style={{
                 borderBottomColor: step === i + 1 ? '#185FA5' : 'transparent',
                 color: step === i + 1 ? '#185FA5' : i + 1 < step ? '#555' : '#bbb',
-              }}
-            >
+              }}>
               {label}
             </div>
           ))}
@@ -508,33 +444,22 @@ function InspectContent() {
               </div>
               <div>
                 <label>Notes (optional)</label>
-                <textarea
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  placeholder="Any context about this inspection..."
-                  rows={3}
-                />
+                <textarea value={notes} onChange={e => setNotes(e.target.value)}
+                  placeholder="Any context about this inspection..." rows={3} />
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <input
-                  type="checkbox" id="baseline" checked={isBaseline}
+                <input type="checkbox" id="baseline" checked={isBaseline}
                   onChange={e => setIsBaseline(e.target.checked)}
-                  style={{ width: 'auto', margin: '3px 0 0', flexShrink: 0 }}
-                />
+                  style={{ width: 'auto', margin: '3px 0 0', flexShrink: 0 }} />
                 <label htmlFor="baseline" style={{ margin: 0, cursor: 'pointer', fontSize: 13, lineHeight: 1.4 }}>
                   This is a baseline inspection (first time documenting this truck)
                 </label>
               </div>
             </div>
             {error && <div style={{ marginTop: 12, color: '#A32D2D', fontSize: 13 }}>{error}</div>}
-            <button
-              className="btn btn-primary"
+            <button className="btn btn-primary"
               style={{ marginTop: 20, width: '100%', padding: '14px', fontSize: 15, fontWeight: 600 }}
-              onClick={() => {
-                if (!selectedTruck) { setError('Please select a truck.'); return }
-                setError(''); setStep(2)
-              }}
-            >
+              onClick={() => { if (!selectedTruck) { setError('Please select a truck.'); return } setError(''); setStep(2) }}>
               Next: capture media →
             </button>
           </div>
@@ -547,10 +472,8 @@ function InspectContent() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <div style={{ fontSize: 15, fontWeight: 500 }}>Guided capture</div>
-                  <button
-                    onClick={() => setShowGuided(false)}
-                    style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 13, padding: '8px 0' }}
-                  >
+                  <button onClick={() => setShowGuided(false)}
+                    style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 13, padding: '8px 0' }}>
                     ✕ Cancel
                   </button>
                 </div>
@@ -565,21 +488,15 @@ function InspectContent() {
               <div>
                 <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 16 }}>How do you want to capture?</div>
 
-                {/* Guided */}
-                <div
-                  className="capture-option"
-                  style={{ border: '2px solid #185FA5', background: '#E6F1FB' }}
-                  onClick={() => setShowGuided(true)}
-                >
+                <div className="capture-option" style={{ border: '2px solid #185FA5', background: '#E6F1FB' }}
+                  onClick={() => setShowGuided(true)}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ fontSize: 28 }}>📐</div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 600, color: '#0C447C' }}>
                           Guided capture{' '}
-                          <span style={{ fontSize: 11, background: '#185FA5', color: 'white', padding: '2px 8px', borderRadius: 10 }}>
-                            Recommended
-                          </span>
+                          <span style={{ fontSize: 11, background: '#185FA5', color: 'white', padding: '2px 8px', borderRadius: 10 }}>Recommended</span>
                         </div>
                         <div style={{ fontSize: 12, color: '#185FA5', marginTop: 2 }}>Stencil overlays · 8 guided shots</div>
                       </div>
@@ -588,16 +505,9 @@ function InspectContent() {
                   </div>
                 </div>
 
-                {/* Record now */}
-                <div
-                  className="capture-option"
-                  style={{
-                    border: uploadMode === 'video' && videoSubMode === 'record'
-                      ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)',
-                    background: uploadMode === 'video' && videoSubMode === 'record' ? '#f0f7ff' : 'white',
-                  }}
-                  onClick={() => { setUploadMode('video'); setVideoSubMode('record'); setShowGuided(false); startRecording() }}
-                >
+                <div className="capture-option"
+                  style={{ border: uploadMode === 'video' && videoSubMode === 'record' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: uploadMode === 'video' && videoSubMode === 'record' ? '#f0f7ff' : 'white' }}
+                  onClick={() => { setUploadMode('video'); setVideoSubMode('record'); setShowGuided(false); startRecording() }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ fontSize: 28 }}>🔴</div>
                     <div>
@@ -607,15 +517,9 @@ function InspectContent() {
                   </div>
                 </div>
 
-                {/* Upload photos */}
-                <div
-                  className="capture-option"
-                  style={{
-                    border: uploadMode === 'photo' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)',
-                    background: uploadMode === 'photo' ? '#f0f7ff' : 'white',
-                  }}
-                  onClick={() => { setUploadMode('photo'); setShowGuided(false) }}
-                >
+                <div className="capture-option"
+                  style={{ border: uploadMode === 'photo' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: uploadMode === 'photo' ? '#f0f7ff' : 'white' }}
+                  onClick={() => { setUploadMode('photo'); setShowGuided(false) }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ fontSize: 28 }}>📷</div>
                     <div>
@@ -625,17 +529,9 @@ function InspectContent() {
                   </div>
                 </div>
 
-                {/* Upload video */}
-                <div
-                  className="capture-option"
-                  style={{
-                    border: uploadMode === 'video' && videoSubMode === 'upload'
-                      ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)',
-                    background: uploadMode === 'video' && videoSubMode === 'upload' ? '#f0f7ff' : 'white',
-                    marginBottom: 16,
-                  }}
-                  onClick={() => { setUploadMode('video'); setVideoSubMode('upload'); setShowGuided(false) }}
-                >
+                <div className="capture-option"
+                  style={{ border: uploadMode === 'video' && videoSubMode === 'upload' ? '2px solid #185FA5' : '0.5px solid rgba(0,0,0,0.15)', background: uploadMode === 'video' && videoSubMode === 'upload' ? '#f0f7ff' : 'white', marginBottom: 16 }}
+                  onClick={() => { setUploadMode('video'); setVideoSubMode('upload'); setShowGuided(false) }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ fontSize: 28 }}>📁</div>
                     <div>
@@ -651,10 +547,8 @@ function InspectContent() {
                     {videoSubMode === 'record' && (
                       <div>
                         <div style={{ position: 'relative', background: '#000', borderRadius: 12, overflow: 'hidden', marginBottom: 12, minHeight: 220 }}>
-                          <video
-                            ref={recordingRef} autoPlay playsInline muted
-                            style={{ width: '100%', maxHeight: 320, objectFit: 'cover', display: 'block' }}
-                          />
+                          <video ref={recordingRef} autoPlay playsInline muted
+                            style={{ width: '100%', maxHeight: 320, objectFit: 'cover', display: 'block' }} />
                           {isRecording && (
                             <>
                               <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.6)', padding: '5px 12px', borderRadius: 20 }}>
@@ -670,27 +564,15 @@ function InspectContent() {
                           )}
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          {isRecording ? (
-                            <button
-                              onClick={stopRecording}
-                              style={{ flex: 1, padding: '14px', background: '#E24B4A', color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
-                            >
-                              ⏹ Stop — {formatTime(recordingSeconds)}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={startRecording}
-                              style={{ flex: 1, padding: '14px', background: '#185FA5', color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}
-                            >
-                              🔴 Start recording
-                            </button>
-                          )}
-                          <button
-                            className="btn"
-                            onClick={() => { stopRecording(); setUploadMode('photo'); setVideoSubMode('choose'); setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}
-                          >
-                            Cancel
-                          </button>
+                          {isRecording
+                            ? <button onClick={stopRecording} style={{ flex: 1, padding: '14px', background: '#E24B4A', color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+                                ⏹ Stop — {formatTime(recordingSeconds)}
+                              </button>
+                            : <button onClick={startRecording} style={{ flex: 1, padding: '14px', background: '#185FA5', color: 'white', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+                                🔴 Start recording
+                              </button>
+                          }
+                          <button className="btn" onClick={() => { stopRecording(); setUploadMode('photo'); setVideoSubMode('choose'); setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}>Cancel</button>
                         </div>
                       </div>
                     )}
@@ -698,10 +580,7 @@ function InspectContent() {
                     {videoSubMode === 'upload' && (
                       <div>
                         {!videoFile ? (
-                          <label
-                            htmlFor="video-input"
-                            style={{ display: 'block', border: '1.5px dashed rgba(0,0,0,0.2)', borderRadius: 12, padding: '32px 16px', textAlign: 'center', cursor: 'pointer', background: '#f9f9f8' }}
-                          >
+                          <label htmlFor="video-input" style={{ display: 'block', border: '1.5px dashed rgba(0,0,0,0.2)', borderRadius: 12, padding: '32px 16px', textAlign: 'center', cursor: 'pointer', background: '#f9f9f8' }}>
                             <div style={{ fontSize: 36, marginBottom: 8 }}>🎥</div>
                             <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Tap to upload walkaround video</div>
                             <div style={{ fontSize: 12, color: '#aaa' }}>MP4, MOV, HEVC supported</div>
@@ -714,9 +593,7 @@ function InspectContent() {
                               <button className="btn btn-primary" onClick={extractFrames} disabled={extracting} style={{ flex: 1 }}>
                                 {extracting ? `Extracting... ${extractProgress}%` : extractedFrames.length > 0 ? `Re-extract (${extractedFrames.length})` : 'Extract frames →'}
                               </button>
-                              <button className="btn" onClick={() => { setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}>
-                                Change
-                              </button>
+                              <button className="btn" onClick={() => { setVideoFile(null); setVideoUrl(''); setExtractedFrames([]) }}>Change</button>
                             </div>
                             {extracting && (
                               <div style={{ marginBottom: 12 }}>
@@ -727,16 +604,12 @@ function InspectContent() {
                             )}
                             {extractedFrames.length > 0 && (
                               <div>
-                                <div style={{ fontSize: 12, color: '#555', marginBottom: 8 }}>
-                                  {extractedFrames.length} frames extracted — tap × to remove
-                                </div>
+                                <div style={{ fontSize: 12, color: '#555', marginBottom: 8 }}>{extractedFrames.length} frames extracted — tap × to remove</div>
                                 <div className="media-grid">
                                   {extractedFrames.map((src, i) => (
                                     <div key={i} style={{ position: 'relative' }}>
                                       <img src={src} style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 8, border: '0.5px solid rgba(0,0,0,0.1)', display: 'block' }} />
-                                      <div style={{ position: 'absolute', bottom: 3, left: 3, background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: 9, padding: '1px 4px', borderRadius: 3 }}>
-                                        {i + 1}
-                                      </div>
+                                      <div style={{ position: 'absolute', bottom: 3, left: 3, background: 'rgba(0,0,0,0.55)', color: 'white', fontSize: 9, padding: '1px 4px', borderRadius: 3 }}>{i + 1}</div>
                                       <button className="thumb-remove" onClick={() => removeFrame(i)}>×</button>
                                     </div>
                                   ))}
@@ -753,10 +626,7 @@ function InspectContent() {
                 {/* PHOTO UI */}
                 {uploadMode === 'photo' && (
                   <div style={{ marginBottom: 14 }}>
-                    <label
-                      htmlFor="photo-input"
-                      style={{ display: 'block', border: '1.5px dashed rgba(0,0,0,0.2)', borderRadius: 12, padding: '32px 16px', textAlign: 'center', cursor: 'pointer', background: '#f9f9f8', marginBottom: 12 }}
-                    >
+                    <label htmlFor="photo-input" style={{ display: 'block', border: '1.5px dashed rgba(0,0,0,0.2)', borderRadius: 12, padding: '32px 16px', textAlign: 'center', cursor: 'pointer', background: '#f9f9f8', marginBottom: 12 }}>
                       <div style={{ fontSize: 36, marginBottom: 8, color: '#bbb' }}>⬆</div>
                       <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Tap to choose photos</div>
                       <div style={{ fontSize: 12, color: '#aaa' }}>JPG, PNG, HEIC · Multiple OK</div>
@@ -779,17 +649,10 @@ function InspectContent() {
 
                 <div className="action-row" style={{ marginTop: 8 }}>
                   <button className="btn" onClick={() => setStep(1)}>← Back</button>
-                  <button
-                    className="btn btn-primary"
-                    onClick={runAnalysis}
+                  <button className="btn btn-primary" onClick={runAnalysis}
                     disabled={analyzing || !readyToAnalyze}
-                    style={{ padding: '14px', fontSize: 15, fontWeight: 600 }}
-                  >
-                    {analyzing
-                      ? 'Analyzing...'
-                      : readyToAnalyze
-                        ? `Analyze ${sourceFrames.length} photo${sourceFrames.length !== 1 ? 's' : ''} →`
-                        : 'Select capture method above'}
+                    style={{ padding: '14px', fontSize: 15, fontWeight: 600 }}>
+                    {analyzing ? 'Analyzing...' : readyToAnalyze ? `Analyze ${sourceFrames.length} photo${sourceFrames.length !== 1 ? 's' : ''} →` : 'Select capture method above'}
                   </button>
                 </div>
 
@@ -813,9 +676,7 @@ function InspectContent() {
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                     <div style={{ fontSize: 15, fontWeight: 500 }}>Analysis complete</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: condColor(result.overallCondition) }}>
-                      {result.overallCondition}
-                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: condColor(result.overallCondition) }}>{result.overallCondition}</div>
                   </div>
 
                   <div style={{ fontSize: 13, color: '#555', lineHeight: 1.6, marginBottom: 10 }}>{result.summary}</div>
@@ -824,9 +685,7 @@ function InspectContent() {
                     <span>Urgency: <strong style={{ color: '#1a1a1a' }}>{result.estimatedRepairUrgency}</strong></span>
                     {result.followUpRequired && <span style={{ color: '#A32D2D', fontWeight: 500 }}>⚠ Follow-up required</span>}
                     {result.lowConfidenceFindings > 0 && (
-                      <span style={{ color: '#633806', fontWeight: 500 }}>
-                        ⚠ {result.lowConfidenceFindings} finding{result.lowConfidenceFindings > 1 ? 's' : ''} need verification
-                      </span>
+                      <span style={{ color: '#633806', fontWeight: 500 }}>⚠ {result.lowConfidenceFindings} finding{result.lowConfidenceFindings > 1 ? 's' : ''} need verification</span>
                     )}
                   </div>
 
@@ -859,15 +718,11 @@ function InspectContent() {
                                 )}
                               </div>
                               <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5 }}>{d.description}</div>
-                              {d.recommendation && (
-                                <div style={{ fontSize: 12, color: '#185FA5', marginTop: 4 }}>→ {d.recommendation}</div>
-                              )}
+                              {d.recommendation && <div style={{ fontSize: 12, color: '#185FA5', marginTop: 4 }}>→ {d.recommendation}</div>}
                               {d.repairEstimate && (d.repairEstimate.low > 0 || d.repairEstimate.high > 0) && (
                                 <div style={{ fontSize: 12, color: '#633806', marginTop: 5, fontWeight: 500 }}>
                                   Est: ${d.repairEstimate.low.toLocaleString()} – ${d.repairEstimate.high.toLocaleString()}
-                                  {d.repairEstimate.method && (
-                                    <span style={{ fontWeight: 400, color: '#888' }}> · {d.repairEstimate.method}</span>
-                                  )}
+                                  {d.repairEstimate.method && <span style={{ fontWeight: 400, color: '#888' }}> · {d.repairEstimate.method}</span>}
                                 </div>
                               )}
                             </div>
@@ -878,7 +733,7 @@ function InspectContent() {
                                 <span style={{ fontSize: 11, color: '#888' }}>Find parts:</span>
                                 {[
                                   { name: 'Amazon', url: `https://www.amazon.com/s?k=${encodeURIComponent(d.partSearchQuery)}&i=automotive` },
-                                  { name: 'RockAuto', url: `https://www.rockauto.com/en/partsgroup/${encodeURIComponent(d.partSearchQuery.split(' ').slice(0, 4).join('+')).toLowerCase()}` },
+                                  { name: 'RockAuto', url: `https://www.rockauto.com/en/partsgroup/${encodeURIComponent(d.partSearchQuery.split(' ').slice(0,4).join('+')).toLowerCase()}` },
                                   { name: 'eBay Motors', url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(d.partSearchQuery)}&_sacat=6000` },
                                 ].map(link => (
                                   <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer"
@@ -893,21 +748,16 @@ function InspectContent() {
                       ))}
                     </div>
                   ) : (
-                    <div style={{ padding: '16px', background: '#EAF3DE', borderRadius: 8, fontSize: 13, color: '#27500A' }}>
-                      No damage detected.
-                    </div>
+                    <div style={{ padding: '16px', background: '#EAF3DE', borderRadius: 8, fontSize: 13, color: '#27500A' }}>No damage detected.</div>
                   )}
 
                   {!isDriver && (
                     <div style={{ marginTop: 14, background: '#f7f7f6', borderRadius: 10, padding: '12px 14px' }}>
                       <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8, color: '#1a1a1a' }}>Did I miss anything?</div>
-                      <textarea
-                        value={missedDamage}
-                        onChange={e => setMissedDamage(e.target.value)}
+                      <textarea value={missedDamage} onChange={e => setMissedDamage(e.target.value)}
                         placeholder="Describe any damage not listed — location, what you see, severity..."
                         rows={4}
-                        style={{ width: '100%', fontSize: 13, border: '0.5px solid rgba(0,0,0,0.15)', borderRadius: 8, padding: '10px 12px', resize: 'vertical', lineHeight: 1.5, background: 'white', color: '#1a1a1a', boxSizing: 'border-box' }}
-                      />
+                        style={{ width: '100%', fontSize: 13, border: '0.5px solid rgba(0,0,0,0.15)', borderRadius: 8, padding: '10px 12px', resize: 'vertical', lineHeight: 1.5, background: 'white', color: '#1a1a1a', boxSizing: 'border-box' }} />
                     </div>
                   )}
 
@@ -921,16 +771,11 @@ function InspectContent() {
                 {saved && (
                   <div className="action-row" style={{ marginBottom: 12 }}>
                     <Link href="/" className="btn">← Dashboard</Link>
-                    <button
-                      className="btn"
-                      onClick={() => {
-                        setStep(1); setResult(null); setFiles([]); setPreviews([])
-                        setVideoFile(null); setVideoUrl(''); setExtractedFrames([])
-                        setSaved(false); setSavedInspectionId(''); setMissedDamage('')
-                      }}
-                    >
-                      New inspection
-                    </button>
+                    <button className="btn" onClick={() => {
+                      setStep(1); setResult(null); setFiles([]); setPreviews([])
+                      setVideoFile(null); setVideoUrl(''); setExtractedFrames([])
+                      setSaved(false); setSavedInspectionId(''); setMissedDamage('')
+                    }}>New inspection</button>
                   </div>
                 )}
               </div>
@@ -946,11 +791,8 @@ function InspectContent() {
       {step === 3 && result && (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'white', borderTop: '0.5px solid rgba(0,0,0,0.1)', padding: '10px 16px', zIndex: 200 }}>
           {!saved ? (
-            <button
-              onClick={saveInspection}
-              disabled={saving}
-              style={{ width: '100%', padding: '14px', background: saving ? '#aaa' : '#185FA5', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer' }}
-            >
+            <button onClick={saveInspection} disabled={saving}
+              style={{ width: '100%', padding: '14px', background: saving ? '#aaa' : '#185FA5', color: 'white', border: 'none', borderRadius: 10, fontSize: 16, fontWeight: 600, cursor: saving ? 'default' : 'pointer' }}>
               {saving ? 'Saving...' : 'Submit inspection'}
             </button>
           ) : (
