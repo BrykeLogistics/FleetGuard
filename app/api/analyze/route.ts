@@ -19,6 +19,10 @@ const WEAK_POINTS: Record<string, string> = {
 - Roof: Front edge seam both corners. Full-length side seams. Rear top seam flashing full width — lifted/rust = water intrusion (urgent FL humidity).
 - Sides: Area above front tires. Lower 18" full length — white-on-white scrapes, scan for tonal variation. Sub-12" = flag for physical verification.
 - Rear: Upper corners BOTH sides (dock dents). Door vertical edges. Door hardware. Rear bumper. Step platform corners.
+BODY MANUFACTURERS (for parts identification):
+- Morgan Olson walk-in vans: morganolsonparts.com for OEM parts
+- Utilimaster/Alvan bodies: fleetpartsonline.com
+- Morgan Corp box/dry freight bodies: morganparts.com
 - DO NOT FLAG: door pull straps/chains/holders/vent latches = standard. Tan/beige grille surround = factory. Rotor/drum rust = normal wear.`,
 
   boxtruck: `Box Truck: rear bumper dock strikes, lower panel rust/scrapes, roof front edge, dual rear tire outer sidewalls, cargo door seals, underride guard, frame rails.`,
