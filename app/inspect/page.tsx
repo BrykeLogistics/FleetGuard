@@ -680,6 +680,9 @@ function InspectContent() {
                                   { name:'Amazon', url:`https://www.amazon.com/s?k=${encodeURIComponent(d.partSearchQuery)}&i=automotive` },
                                   { name:'RockAuto', url:`https://www.rockauto.com/en/partsgroup/${encodeURIComponent(d.partSearchQuery.split(' ').slice(0,4).join('+')).toLowerCase()}` },
                                   { name:'eBay Motors', url:`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(d.partSearchQuery)}&_sacat=6000` },
+                              { name:'Fleet Parts Online', url:`https://www.fleetpartsonline.com/search?q=${encodeURIComponent(d.partSearchQuery)}` },
+{ name:'Morgan Olson Parts', url:`https://www.morganolsonparts.com/search?q=${encodeURIComponent(d.partSearchQuery)}` },
+{ name:'Morgan Parts', url:`https://www.morganparts.com/search?q=${encodeURIComponent(d.partSearchQuery)}` },
                                 ].map(link => (
                                   <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer"
                                     style={{ fontSize:11, fontWeight:500, color:'#185FA5', background:'#E6F1FB', padding:'4px 10px', borderRadius:20, textDecoration:'none' }}>
