@@ -11,6 +11,7 @@ export interface Profile {
   phone: string
   fedex_id: string
   is_active: boolean
+  company_id: string
 }
 
 export function useProfile() {
@@ -29,8 +30,9 @@ export function useProfile() {
   }, [])
 
   const isOwner = profile?.role === 'owner'
-  const isManager = profile?.role === 'manager' || profile?.role === 'owner'
+  const isManager = profile?.role === 'manager'
   const isDriver = profile?.role === 'driver'
+  const isOwnerOrManager = profile?.role === 'owner' || profile?.role === 'manager'
 
-  return { profile, loading, isOwner, isManager, isDriver }
+  return { profile, loading, isOwner, isManager, isDriver, isOwnerOrManager }
 }
