@@ -47,27 +47,26 @@ function InspectContent() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [savedInspectionId, setSavedInspectionId] = useState('')
-  const { profile, isDriver, loading: profileLoading } = useProfile()
+  const { profile, isDriver, isOwner, isManager, loading: profileLoading } = useProfile()
   const [missedDamage, setMissedDamage] = useState('')
   const [error, setError] = useState('')
   const [showGuided, setShowGuided] = useState(false)
 
-  useEffect(() => {
-    if (!profileLoading) loadTrucks()
-  }, [profileLoading])
+  useEffect(() => { if (!profileLoading) loadTrucks() }, [profileLoading])
 
   async function loadTrucks() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    if (isDriver) {
-      const { data: profileData } = await supabase.from('profiles').select('csa').eq('id', user.id).single()
-      if (!profileData?.csa) return
-      const { data } = await supabase.from('trucks').select('*').eq('csa', profileData.csa).order('truck_number')
-      setTrucks(data || [])
-    } else {
-      const { data } = await supabase.from('trucks').select('*').eq('user_id', user.id).order('truck_number')
-      setTrucks(data || [])
+    if (!profile?.company_id) return
+
+    let query = supabase.from('trucks').select('*').eq('company_id', profile.company_id).order('truck_number')
+
+    // Managers and drivers only see their CSA
+    if (isDriver || isManager) {
+      if (!profile.csa) return
+      query = query.eq('csa', profile.csa)
     }
+
+    const { data } = await query
+    setTrucks(data || [])
   }
 
   function handlePhotoFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -96,12 +95,9 @@ function InspectContent() {
 
   async function extractFrames() {
     if (!videoRef.current || !videoUrl) return
-    setExtracting(true)
-    setExtractProgress(0)
-    setExtractedFrames([])
+    setExtracting(true); setExtractProgress(0); setExtractedFrames([])
     const video = videoRef.current
-    video.src = videoUrl
-    video.muted = true
+    video.src = videoUrl; video.muted = true
     await new Promise<void>(resolve => { video.onloadedmetadata = () => resolve(); video.load() })
     const duration = video.duration
     const interval = Math.max(duration / 8, 3)
@@ -124,61 +120,40 @@ function InspectContent() {
         }
       })
     }
-    setExtractedFrames(frames)
-    setExtracting(false)
+    setExtractedFrames(frames); setExtracting(false)
   }
 
-  function removeFrame(idx: number) {
-    setExtractedFrames(prev => prev.filter((_, i) => i !== idx))
-  }
+  function removeFrame(idx: number) { setExtractedFrames(prev => prev.filter((_, i) => i !== idx)) }
 
   async function startRecording() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      })
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
       setRecordingStream(stream)
       if (recordingRef.current) { recordingRef.current.srcObject = stream; recordingRef.current.play().catch(() => {}) }
       chunksRef.current = []
-      const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' :
-        MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm'
+      const mimeType = MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm'
       const recorder = new MediaRecorder(stream, { mimeType })
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: mimeType })
         const url = URL.createObjectURL(blob)
-        setLiveVideoUrl(url)
-        setVideoFile(new File([blob], 'recording.mp4', { type: mimeType }))
-        setVideoUrl(url)
-        setVideoSubMode('upload')
-        stream.getTracks().forEach(t => t.stop())
-        setRecordingStream(null)
+        setLiveVideoUrl(url); setVideoFile(new File([blob], 'recording.mp4', { type: mimeType })); setVideoUrl(url); setVideoSubMode('upload')
+        stream.getTracks().forEach(t => t.stop()); setRecordingStream(null)
       }
-      recorder.start(100)
-      setMediaRecorder(recorder)
-      setIsRecording(true)
-      setRecordingSeconds(0)
+      recorder.start(100); setMediaRecorder(recorder); setIsRecording(true); setRecordingSeconds(0)
       timerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
-    } catch {
-      alert('Camera access denied. Please allow camera access and try again.')
-    }
+    } catch { alert('Camera access denied. Please allow camera access and try again.') }
   }
 
   function stopRecording() {
-    mediaRecorder?.stop()
-    setIsRecording(false)
+    mediaRecorder?.stop(); setIsRecording(false)
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
   }
 
-  function formatTime(s: number) {
-    return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`
-  }
+  function formatTime(s: number) { return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}` }
 
   function handleGuidedComplete(frames: { shotId: string, label: string, dataUrl: string }[]) {
-    setShowGuided(false)
-    setPreviews(prev => [...prev, ...frames.map(f => f.dataUrl)])
-    setUploadMode('photo')
+    setShowGuided(false); setPreviews(prev => [...prev, ...frames.map(f => f.dataUrl)]); setUploadMode('photo')
   }
 
   const resizeImage = (dataUrl: string): Promise<string> =>
@@ -202,10 +177,7 @@ function InspectContent() {
   async function runAnalysis() {
     const sourceFrames = uploadMode === 'video' ? extractedFrames : previews
     if (!selectedTruck) { setError('Please select a truck first.'); return }
-    if (sourceFrames.length === 0) {
-      setError(uploadMode === 'video' ? 'Please extract frames from your video first.' : 'Please upload at least one photo.')
-      return
-    }
+    if (sourceFrames.length === 0) { setError(uploadMode === 'video' ? 'Please extract frames from your video first.' : 'Please upload at least one photo.'); return }
     setAnalyzing(true); setError('')
     setAnalyzeStatus('Loading truck data...')
     const truck = trucks.find(t => t.id === selectedTruck)
@@ -215,54 +187,32 @@ function InspectContent() {
       baselineDamages = data || []
     }
     setAnalyzeStatus(`Preparing ${Math.min(sourceFrames.length, 8)} frames...`)
-    const images = await Promise.all(sourceFrames.slice(0, 8).map(async p => ({
-      media_type: 'image/jpeg',
-      data: await resizeImage(p),
-    })))
+    const images = await Promise.all(sourceFrames.slice(0, 8).map(async p => ({ media_type: 'image/jpeg', data: await resizeImage(p) })))
 
-    // Cycling progress messages so drivers see activity
-    const messages = [
-      'Scanning front end and bumper...',
-      'Checking body panels and sides...',
-      'Inspecting roof and seams...',
-      'Reviewing rear and doors...',
-      'Analyzing damage severity...',
-      'Compiling findings...',
-    ]
-    let msgIdx = 0
-    setAnalyzeStatus(messages[0])
-    const msgTimer = setInterval(() => {
-      msgIdx = (msgIdx + 1) % messages.length
-      setAnalyzeStatus(messages[msgIdx])
-    }, 2200)
+    const messages = ['Scanning front end and bumper...', 'Checking body panels and sides...', 'Inspecting roof and seams...', 'Reviewing rear and doors...', 'Analyzing damage severity...', 'Compiling findings...']
+    let msgIdx = 0; setAnalyzeStatus(messages[0])
+    const msgTimer = setInterval(() => { msgIdx = (msgIdx + 1) % messages.length; setAnalyzeStatus(messages[msgIdx]) }, 2200)
 
     try {
       const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           images,
           truckInfo: `Truck #${truck?.truck_number} - ${truck?.driver_name} (${truck?.year} ${truck?.make} ${truck?.model})`,
-          inspectionType: inspType,
-          inspector,
+          inspectionType: inspType, inspector,
           notes: notes + (uploadMode === 'video' ? ` [Video walkaround — ${images.length} frames extracted]` : ''),
-          baselineDamages,
-          vehicleType: truck?.vehicle_type || '',
-          fleetType: truck?.fleet_type || 'owned',
+          baselineDamages, vehicleType: truck?.vehicle_type || '', fleetType: truck?.fleet_type || 'owned',
         }),
       })
       const rawText = await res.text()
       let data
       try { data = JSON.parse(rawText) } catch { throw new Error('Server error: ' + rawText.slice(0, 200)) }
       if (data.error) throw new Error(data.error)
-      setResult(data)
-      setStep(3)
+      setResult(data); setStep(3)
     } catch (err: any) {
       setError(err.message)
     } finally {
-      clearInterval(msgTimer)
-      setAnalyzing(false)
-      setAnalyzeStatus('')
+      clearInterval(msgTimer); setAnalyzing(false); setAnalyzeStatus('')
     }
   }
 
@@ -272,75 +222,55 @@ function InspectContent() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSaving(false); return }
 
-    const { data: insp, error: inspError } = await supabase
-      .from('inspections')
-      .insert({
-        truck_id: selectedTruck,
-        inspector_name: inspector || 'Unknown',
-        inspection_type: inspType,
-        notes,
-        overall_condition: result.overallCondition,
-        summary: result.summary,
-        follow_up_required: result.followUpRequired,
-        repair_urgency: result.estimatedRepairUrgency,
-        is_baseline: isBaseline,
-        acknowledged: true,
-        acknowledged_by: profile?.full_name || inspector,
-        acknowledged_at: new Date().toISOString(),
-        locked: false,
-        user_id: user.id,
-      })
-      .select().single()
+    const { data: insp, error: inspError } = await supabase.from('inspections').insert({
+      truck_id: selectedTruck, inspector_name: inspector || 'Unknown',
+      inspection_type: inspType, notes,
+      overall_condition: result.overallCondition, summary: result.summary,
+      follow_up_required: result.followUpRequired, repair_urgency: result.estimatedRepairUrgency,
+      is_baseline: isBaseline, acknowledged: true,
+      acknowledged_by: profile?.full_name || inspector,
+      acknowledged_at: new Date().toISOString(), locked: false,
+      user_id: user.id, company_id: profile?.company_id,
+    }).select().single()
 
-    if (inspError) {
-      console.error('Inspection insert error:', inspError)
-      setError(inspError.message)
-      setSaving(false)
-      return
-    }
+    if (inspError) { console.error('Inspection insert error:', inspError); setError(inspError.message); setSaving(false); return }
 
     if (result.damages?.length > 0) {
       await supabase.from('damages').insert(
         result.damages.map((d: any) => ({
           inspection_id: insp.id, truck_id: selectedTruck,
-          severity: d.severity, location: d.location,
-          description: d.description, recommendation: d.recommendation || '',
-          is_new: d.is_new, user_id: user.id,
-          repair_estimate_low: d.repairEstimate?.low || 0,
-          repair_estimate_high: d.repairEstimate?.high || 0,
+          severity: d.severity, location: d.location, description: d.description,
+          recommendation: d.recommendation || '', is_new: d.is_new,
+          user_id: user.id, company_id: profile?.company_id,
+          repair_estimate_low: d.repairEstimate?.low || 0, repair_estimate_high: d.repairEstimate?.high || 0,
           repair_estimate_notes: d.repairEstimate?.notes || '',
-          diy_replaceable: d.diyReplaceable || false,
-          part_name: d.partName || '',
-          part_search_query: d.partSearchQuery || '',
+          diy_replaceable: d.diyReplaceable || false, part_name: d.partName || '', part_search_query: d.partSearchQuery || '',
         }))
       )
     }
 
     const framesToSave = (uploadMode === 'video' ? extractedFrames : previews).slice(0, 8)
     const photoType = uploadMode === 'video' ? 'video_frame' : 'photo'
-    await Promise.all(
-      framesToSave.map(async (dataUrl, i) => {
-        try {
-          const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl
-          const byteChars = atob(base64)
-          const byteArr = new Uint8Array(byteChars.length)
-          for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j)
-          const blob = new Blob([byteArr], { type: 'image/jpeg' })
-          const path = `${user.id}/${selectedTruck}/${insp.id}/photo_${i}.jpg`
-          const { error: uploadError } = await supabase.storage.from('inspection-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true })
-          if (!uploadError) {
-            await supabase.from('inspection_photos').insert({
-              inspection_id: insp.id, truck_id: selectedTruck,
-              storage_path: path, photo_type: photoType, user_id: user.id,
-            })
-          }
-        } catch (e) { console.error(`Photo ${i} upload error:`, e) }
-      })
-    )
+    await Promise.all(framesToSave.map(async (dataUrl, i) => {
+      try {
+        const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl
+        const byteChars = atob(base64)
+        const byteArr = new Uint8Array(byteChars.length)
+        for (let j = 0; j < byteChars.length; j++) byteArr[j] = byteChars.charCodeAt(j)
+        const blob = new Blob([byteArr], { type: 'image/jpeg' })
+        const path = `${user.id}/${selectedTruck}/${insp.id}/photo_${i}.jpg`
+        const { error: uploadError } = await supabase.storage.from('inspection-photos').upload(path, blob, { contentType: 'image/jpeg', upsert: true })
+        if (!uploadError) {
+          await supabase.from('inspection_photos').insert({
+            inspection_id: insp.id, truck_id: selectedTruck,
+            storage_path: path, photo_type: photoType,
+            user_id: user.id, company_id: profile?.company_id,
+          })
+        }
+      } catch (e) { console.error(`Photo ${i} upload error:`, e) }
+    }))
 
-    setSaving(false)
-    setSaved(true)
-    setSavedInspectionId(insp.id)
+    setSaving(false); setSaved(true); setSavedInspectionId(insp.id)
   }
 
   const condColor = (c: string) => c === 'Good' ? '#27500A' : (c === 'Critical' || c === 'Poor') ? '#A32D2D' : '#633806'
@@ -352,8 +282,9 @@ function InspectContent() {
     <div>
       <Navbar />
       <style>{`
-        @keyframes spin  { to { transform: rotate(360deg); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        @keyframes fadeStatus { 0%{opacity:0;transform:translateY(4px)} 100%{opacity:1;transform:translateY(0)} }
         .step-tab { flex:1; padding:10px 4px; font-size:12px; font-weight:500; text-align:center; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; user-select:none; -webkit-tap-highlight-color:transparent; }
         @media(min-width:480px){ .step-tab{ font-size:13px; padding:10px 20px; flex:none; } }
         .media-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
@@ -370,24 +301,19 @@ function InspectContent() {
         @media(min-width:480px){ .action-row{ flex-direction:row; flex-wrap:wrap; } .action-row a,.action-row button{ width:auto !important; } }
         .action-row a,.action-row button{ width:100% !important; text-align:center !important; box-sizing:border-box; }
         .part-links{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-        @keyframes fadeStatus { 0%{opacity:0;transform:translateY(4px)} 100%{opacity:1;transform:translateY(0)} }
         .analyze-status{ animation:fadeStatus 0.4s ease; }
       `}</style>
 
       <div style={{ maxWidth:720, margin:'0 auto', padding:'20px 16px 100px' }}>
-
-        {/* Step tabs */}
         <div style={{ display:'flex', marginBottom:20, borderBottom:'0.5px solid rgba(0,0,0,0.1)' }}>
           {['1. Setup','2. Media','3. Results'].map((label,i) => (
-            <div key={label} className="step-tab"
-              onClick={() => { if(i+1<=step) setStep(i+1) }}
+            <div key={label} className="step-tab" onClick={() => { if(i+1<=step) setStep(i+1) }}
               style={{ borderBottomColor:step===i+1?'#185FA5':'transparent', color:step===i+1?'#185FA5':i+1<step?'#555':'#bbb' }}>
               {label}
             </div>
           ))}
         </div>
 
-        {/* ── Step 1 ── */}
         {step === 1 && (
           <div className="card" style={{ padding:'20px 16px' }}>
             <div style={{ fontSize:15, fontWeight:500, marginBottom:18 }}>Inspection setup</div>
@@ -407,38 +333,25 @@ function InspectContent() {
               <div>
                 <label>Inspection type</label>
                 <select value={inspType} onChange={e => setInspType(e.target.value)}>
-                  <option>Routine weekly check</option>
-                  <option>Before trip</option>
-                  <option>After trip</option>
-                  <option>After incident report</option>
-                  <option>Monthly full inspection</option>
+                  <option>Routine weekly check</option><option>Before trip</option><option>After trip</option>
+                  <option>After incident report</option><option>Monthly full inspection</option>
                 </select>
               </div>
-              <div>
-                <label>Inspector name</label>
-                <input value={inspector} onChange={e => setInspector(e.target.value)} placeholder="Your name" />
-              </div>
-              <div>
-                <label>Notes (optional)</label>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any context about this inspection..." rows={3} />
-              </div>
+              <div><label>Inspector name</label><input value={inspector} onChange={e => setInspector(e.target.value)} placeholder="Your name" /></div>
+              <div><label>Notes (optional)</label><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any context about this inspection..." rows={3} /></div>
               <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
                 <input type="checkbox" id="baseline" checked={isBaseline} onChange={e => setIsBaseline(e.target.checked)} style={{ width:'auto', margin:'3px 0 0', flexShrink:0 }} />
-                <label htmlFor="baseline" style={{ margin:0, cursor:'pointer', fontSize:13, lineHeight:1.4 }}>
-                  This is a baseline inspection (first time documenting this truck)
-                </label>
+                <label htmlFor="baseline" style={{ margin:0, cursor:'pointer', fontSize:13, lineHeight:1.4 }}>This is a baseline inspection (first time documenting this truck)</label>
               </div>
             </div>
             {error && <div style={{ marginTop:12, color:'#A32D2D', fontSize:13 }}>{error}</div>}
-            <button className="btn btn-primary"
-              style={{ marginTop:20, width:'100%', padding:'14px', fontSize:15, fontWeight:600 }}
+            <button className="btn btn-primary" style={{ marginTop:20, width:'100%', padding:'14px', fontSize:15, fontWeight:600 }}
               onClick={() => { if(!selectedTruck){setError('Please select a truck.');return} setError('');setStep(2) }}>
               Next: capture media →
             </button>
           </div>
         )}
 
-        {/* ── Step 2 ── */}
         {step === 2 && (
           <div className="card" style={{ padding:'20px 16px' }}>
             {showGuided ? (
@@ -447,12 +360,9 @@ function InspectContent() {
                   <div style={{ fontSize:15, fontWeight:500 }}>Guided capture</div>
                   <button onClick={() => setShowGuided(false)} style={{ background:'none', border:'none', color:'#888', cursor:'pointer', fontSize:13, padding:'8px 0' }}>✕ Cancel</button>
                 </div>
-                <GuidedCapture
-                  onComplete={handleGuidedComplete}
-                  onCancel={() => setShowGuided(false)}
+                <GuidedCapture onComplete={handleGuidedComplete} onCancel={() => setShowGuided(false)}
                   vehicleType={trucks.find(t => t.id === selectedTruck)?.vehicle_type}
-                  isRental={trucks.find(t => t.id === selectedTruck)?.fleet_type === 'rental'}
-                />
+                  isRental={trucks.find(t => t.id === selectedTruck)?.fleet_type === 'rental'} />
               </div>
             ) : (
               <div>
@@ -471,43 +381,30 @@ function InspectContent() {
                   </div>
                 </div>
 
-                <div className="capture-option"
-                  style={{ border:uploadMode==='video'&&videoSubMode==='record'?'2px solid #185FA5':'0.5px solid rgba(0,0,0,0.15)', background:uploadMode==='video'&&videoSubMode==='record'?'#f0f7ff':'white' }}
+                <div className="capture-option" style={{ border:uploadMode==='video'&&videoSubMode==='record'?'2px solid #185FA5':'0.5px solid rgba(0,0,0,0.15)', background:uploadMode==='video'&&videoSubMode==='record'?'#f0f7ff':'white' }}
                   onClick={() => { setUploadMode('video');setVideoSubMode('record');setShowGuided(false);startRecording() }}>
                   <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ fontSize:28 }}>🔴</div>
-                    <div>
-                      <div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Record now</div>
-                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Walkaround video using your camera</div>
-                    </div>
+                    <div><div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Record now</div><div style={{ fontSize:12, color:'#888', marginTop:2 }}>Walkaround video using your camera</div></div>
                   </div>
                 </div>
 
-                <div className="capture-option"
-                  style={{ border:uploadMode==='photo'?'2px solid #185FA5':'0.5px solid rgba(0,0,0,0.15)', background:uploadMode==='photo'?'#f0f7ff':'white' }}
+                <div className="capture-option" style={{ border:uploadMode==='photo'?'2px solid #185FA5':'0.5px solid rgba(0,0,0,0.15)', background:uploadMode==='photo'?'#f0f7ff':'white' }}
                   onClick={() => { setUploadMode('photo');setShowGuided(false) }}>
                   <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ fontSize:28 }}>📷</div>
-                    <div>
-                      <div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Upload photos</div>
-                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Choose from your camera roll</div>
-                    </div>
+                    <div><div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Upload photos</div><div style={{ fontSize:12, color:'#888', marginTop:2 }}>Choose from your camera roll</div></div>
                   </div>
                 </div>
 
-                <div className="capture-option"
-                  style={{ border:uploadMode==='video'&&videoSubMode==='upload'?'2px solid #185FA5':'0.5px solid rgba(0,0,0,0.15)', background:uploadMode==='video'&&videoSubMode==='upload'?'#f0f7ff':'white', marginBottom:16 }}
+                <div className="capture-option" style={{ border:uploadMode==='video'&&videoSubMode==='upload'?'2px solid #185FA5':'0.5px solid rgba(0,0,0,0.15)', background:uploadMode==='video'&&videoSubMode==='upload'?'#f0f7ff':'white', marginBottom:16 }}
                   onClick={() => { setUploadMode('video');setVideoSubMode('upload');setShowGuided(false) }}>
                   <div style={{ display:'flex', alignItems:'center', gap:12 }}>
                     <div style={{ fontSize:28 }}>📁</div>
-                    <div>
-                      <div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Upload video</div>
-                      <div style={{ fontSize:12, color:'#888', marginTop:2 }}>Choose a pre-recorded video</div>
-                    </div>
+                    <div><div style={{ fontSize:14, fontWeight:600, color:'#1a1a1a' }}>Upload video</div><div style={{ fontSize:12, color:'#888', marginTop:2 }}>Choose a pre-recorded video</div></div>
                   </div>
                 </div>
 
-                {/* VIDEO UI */}
                 {uploadMode === 'video' && (
                   <div style={{ marginBottom:14 }}>
                     {videoSubMode === 'record' && (
@@ -553,13 +450,7 @@ function InspectContent() {
                               </button>
                               <button className="btn" onClick={() => { setVideoFile(null);setVideoUrl('');setExtractedFrames([]) }}>Change</button>
                             </div>
-                            {extracting && (
-                              <div style={{ marginBottom:12 }}>
-                                <div style={{ height:4, background:'#eee', borderRadius:2, overflow:'hidden' }}>
-                                  <div style={{ height:'100%', background:'#185FA5', width:`${extractProgress}%`, transition:'width 0.3s' }} />
-                                </div>
-                              </div>
-                            )}
+                            {extracting && <div style={{ marginBottom:12 }}><div style={{ height:4, background:'#eee', borderRadius:2, overflow:'hidden' }}><div style={{ height:'100%', background:'#185FA5', width:`${extractProgress}%`, transition:'width 0.3s' }} /></div></div>}
                             {extractedFrames.length > 0 && (
                               <div>
                                 <div style={{ fontSize:12, color:'#555', marginBottom:8 }}>{extractedFrames.length} frames extracted — tap × to remove</div>
@@ -581,7 +472,6 @@ function InspectContent() {
                   </div>
                 )}
 
-                {/* PHOTO UI */}
                 {uploadMode === 'photo' && (
                   <div style={{ marginBottom:14 }}>
                     <label htmlFor="photo-input" style={{ display:'block', border:'1.5px dashed rgba(0,0,0,0.2)', borderRadius:12, padding:'32px 16px', textAlign:'center', cursor:'pointer', background:'#f9f9f8', marginBottom:12 }}>
@@ -604,14 +494,12 @@ function InspectContent() {
                 )}
 
                 {error && <div style={{ color:'#A32D2D', fontSize:13, marginBottom:12 }}>{error}</div>}
-
                 <div className="action-row" style={{ marginTop:8 }}>
                   <button className="btn" onClick={() => setStep(1)}>← Back</button>
                   <button className="btn btn-primary" onClick={runAnalysis} disabled={analyzing||!readyToAnalyze} style={{ padding:'14px', fontSize:15, fontWeight:600 }}>
                     {analyzing?'Analyzing...':readyToAnalyze?`Analyze ${sourceFrames.length} photo${sourceFrames.length!==1?'s':''} →`:'Select capture method above'}
                   </button>
                 </div>
-
                 {analyzing && (
                   <div style={{ textAlign:'center', padding:'32px 16px', marginTop:8 }}>
                     <div style={{ width:32, height:32, border:'2px solid #ddd', borderTopColor:'#185FA5', borderRadius:'50%', animation:'spin 0.8s linear infinite', margin:'0 auto 12px' }} />
@@ -624,7 +512,6 @@ function InspectContent() {
           </div>
         )}
 
-        {/* ── Step 3 ── */}
         {step === 3 && result && (
           <div>
             <div className="results-layout">
@@ -640,14 +527,12 @@ function InspectContent() {
                     {result.followUpRequired && <span style={{ color:'#A32D2D', fontWeight:500 }}>⚠ Follow-up required</span>}
                     {result.lowConfidenceFindings > 0 && <span style={{ color:'#633806', fontWeight:500 }}>⚠ {result.lowConfidenceFindings} finding{result.lowConfidenceFindings>1?'s':''} need verification</span>}
                   </div>
-
                   {!isDriver && result.totalEstimatedRepairCost && (result.totalEstimatedRepairCost.low>0||result.totalEstimatedRepairCost.high>0) && (
                     <div style={{ background:'#FAEEDA', borderRadius:8, padding:'10px 14px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:4 }}>
                       <div style={{ fontSize:12, fontWeight:500, color:'#633806' }}>Total estimated repairs</div>
                       <div style={{ fontSize:16, fontWeight:700, color:'#854F0B' }}>${result.totalEstimatedRepairCost.low.toLocaleString()} – ${result.totalEstimatedRepairCost.high.toLocaleString()}</div>
                     </div>
                   )}
-
                   {result.damages?.length > 0 ? (
                     <div>
                       <div style={{ fontSize:11, fontWeight:500, color:'#888', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.05em' }}>Damage findings ({result.damages.length})</div>
@@ -680,9 +565,9 @@ function InspectContent() {
                                   { name:'Amazon', url:`https://www.amazon.com/s?k=${encodeURIComponent(d.partSearchQuery)}&i=automotive` },
                                   { name:'RockAuto', url:`https://www.rockauto.com/en/partsgroup/${encodeURIComponent(d.partSearchQuery.split(' ').slice(0,4).join('+')).toLowerCase()}` },
                                   { name:'eBay Motors', url:`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(d.partSearchQuery)}&_sacat=6000` },
-                              { name:'Fleet Parts Online', url:`https://www.fleetpartsonline.com/search?q=${encodeURIComponent(d.partSearchQuery)}` },
-{ name:'Morgan Olson Parts', url:`https://www.morganolsonparts.com/search?q=${encodeURIComponent(d.partSearchQuery)}` },
-{ name:'Morgan Parts', url:`https://www.morganparts.com/search?q=${encodeURIComponent(d.partSearchQuery)}` },
+                                  { name:'Fleet Parts Online', url:'https://www.fleetpartsonline.com' },
+                                  { name:'Morgan Olson Parts', url:'https://www.morganolsonparts.com' },
+                                  { name:'Morgan Parts', url:'https://www.morganparts.com' },
                                 ].map(link => (
                                   <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer"
                                     style={{ fontSize:11, fontWeight:500, color:'#185FA5', background:'#E6F1FB', padding:'4px 10px', borderRadius:20, textDecoration:'none' }}>
@@ -698,36 +583,27 @@ function InspectContent() {
                   ) : (
                     <div style={{ padding:'16px', background:'#EAF3DE', borderRadius:8, fontSize:13, color:'#27500A' }}>No damage detected.</div>
                   )}
-
                   {!isDriver && (
                     <div style={{ marginTop:14, background:'#f7f7f6', borderRadius:10, padding:'12px 14px' }}>
                       <div style={{ fontSize:13, fontWeight:500, marginBottom:8, color:'#1a1a1a' }}>Did I miss anything?</div>
                       <textarea value={missedDamage} onChange={e => setMissedDamage(e.target.value)}
                         placeholder="Describe any damage not listed — location, what you see, severity..."
-                        rows={4}
-                        style={{ width:'100%', fontSize:13, border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:8, padding:'10px 12px', resize:'vertical', lineHeight:1.5, background:'white', color:'#1a1a1a', boxSizing:'border-box' }} />
+                        rows={4} style={{ width:'100%', fontSize:13, border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:8, padding:'10px 12px', resize:'vertical', lineHeight:1.5, background:'white', color:'#1a1a1a', boxSizing:'border-box' }} />
                     </div>
                   )}
-
                   {saved&&savedInspectionId && (
                     <div style={{ marginTop:12 }}>
                       <DamageFeedback inspectionId={savedInspectionId} truckId={selectedTruck} onSubmitted={() => {}} />
                     </div>
                   )}
                 </div>
-
                 {saved && (
                   <div className="action-row" style={{ marginBottom:12 }}>
                     <Link href="/" className="btn">← Dashboard</Link>
-                    <button className="btn" onClick={() => {
-                      setStep(1);setResult(null);setFiles([]);setPreviews([])
-                      setVideoFile(null);setVideoUrl('');setExtractedFrames([])
-                      setSaved(false);setSavedInspectionId('');setMissedDamage('')
-                    }}>New inspection</button>
+                    <button className="btn" onClick={() => { setStep(1);setResult(null);setFiles([]);setPreviews([]);setVideoFile(null);setVideoUrl('');setExtractedFrames([]);setSaved(false);setSavedInspectionId('');setMissedDamage('') }}>New inspection</button>
                   </div>
                 )}
               </div>
-
               <div className="photo-strip-wrapper">
                 <PhotoStrip photos={sourceFrames.map((src,i) => ({ url:src, label:`Photo ${i+1}` }))} />
               </div>
@@ -739,8 +615,7 @@ function InspectContent() {
       {step===3&&result && (
         <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'white', borderTop:'0.5px solid rgba(0,0,0,0.1)', padding:'10px 16px', zIndex:200 }}>
           {!saved ? (
-            <button onClick={saveInspection} disabled={saving}
-              style={{ width:'100%', padding:'14px', background:saving?'#aaa':'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:16, fontWeight:600, cursor:saving?'default':'pointer' }}>
+            <button onClick={saveInspection} disabled={saving} style={{ width:'100%', padding:'14px', background:saving?'#aaa':'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:16, fontWeight:600, cursor:saving?'default':'pointer' }}>
               {saving?'Saving...':'Submit inspection'}
             </button>
           ) : (
