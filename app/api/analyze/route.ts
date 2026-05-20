@@ -19,10 +19,6 @@ const WEAK_POINTS: Record<string, string> = {
 - Roof: Front edge seam both corners. Full-length side seams. Rear top seam flashing full width — lifted/rust = water intrusion (urgent FL humidity).
 - Sides: Area above front tires. Lower 18" full length — white-on-white scrapes, scan for tonal variation. Sub-12" = flag for physical verification.
 - Rear: Upper corners BOTH sides (dock dents). Door vertical edges. Door hardware. Rear bumper. Step platform corners.
-BODY MANUFACTURERS (for parts identification):
-- Morgan Olson walk-in vans: morganolsonparts.com for OEM parts
-- Utilimaster/Alvan bodies: fleetpartsonline.com
-- Morgan Corp box/dry freight bodies: morganparts.com
 - DO NOT FLAG: door pull straps/chains/holders/vent latches = standard. Tan/beige grille surround = factory. Rotor/drum rust = normal wear.`,
 
   boxtruck: `Box Truck: rear bumper dock strikes, lower panel rust/scrapes, roof front edge, dual rear tire outer sidewalls, cargo door seals, underride guard, frame rails.`,
@@ -81,9 +77,22 @@ Cargo: threshold plate, tie-down tracks, floor damage, wall/ceiling dents or hol
 
   const rentalNote = isRental ? `\nRENTAL: Heightened sensitivity — document even minor items, do not round down severity.` : ''
 
-  const baselineInstructions = hasBaseline
-    ? `FOLLOW-UP: is_new:true ONLY for damage NOT in baseline below. Flag worsening existing damage.`
-    : `BASELINE: Legal record — document ALL damage. When in doubt, include it.`
+  // ── Baseline vs rolling comparison instructions ───────────────
+  const baselineInstructions = !hasBaseline
+    ? `BASELINE INSPECTION — INITIAL DOCUMENTATION MODE:
+This is the legal baseline for all future comparisons. Document ALL damage including minor items. When in doubt, include it. Mark all findings is_new: false.`
+
+    : `ROLLING COMPARISON MODE — WEEK-OVER-WEEK CHANGE DETECTION:
+You are comparing this week's photos against last week's documented damage listed below.
+
+CRITICAL RULES FOR COMPARISON MODE:
+1. is_new: true ONLY if you are highly confident (confidence ≥ 85) the damage was NOT present last week
+2. Lighting differences, shadow variation, and camera angle changes are NOT new damage — default to is_new: false when uncertain
+3. A finding must be in a clearly DIFFERENT location than any existing baseline entry to be flagged as new
+4. If a baseline entry says "lower driver side panel scrape" and you see a mark in the same zone, mark is_new: false even if it looks slightly different — angle/lighting variation is expected
+5. Only flag is_new: true for damage that is unambiguously in a new location or is a clearly different type of damage (e.g. a fresh dent where there was previously only a scrape)
+6. When in doubt — is_new: false. False negatives are better than false positives for weekly checks.
+7. Still document ALL damage (old and new) so the record is complete, but is_new must be conservative.`
 
   return `Expert FedEx fleet damage inspector, Bryke Logistics Fort Lauderdale FL. Legal/DOT documentation.
 
@@ -99,7 +108,7 @@ ${weakPoints ? `VEHICLE WEAK POINTS:\n${weakPoints}\n` : ''}${DAMAGE_KNOWLEDGE}
 ${photoGroup === 'interior' ? interiorChecklist : exteriorChecklist}
 
 SEVERITY: critical=structural/safety/DOT fail/frame/missing fascia. moderate=fist-size+ dent/bare metal/cracked lens/missing trim/rust bubbling/bumper misalignment/seam separation. minor=scuff/small ding/chip/light curb rash.
-CONFIDENCE: rate 0-100. Under 70: needsVerification:true + verificationNote.
+CONFIDENCE: rate 0-100. Under 70: needsVerification:true + verificationNote.${hasBaseline ? ' In comparison mode, confidence < 85 for any is_new:true finding = automatically set is_new:false.' : ''}
 REPAIR: DIY=mirrors/lights/trim/bumper covers/steps/hubcaps/reflectors/handles. Shop=frame/major panels/roof/windshield/structural/seams.
 
 JSON only, no markdown:
@@ -125,6 +134,15 @@ function deduplicateDamages(damages1: any[], damages2: any[]): any[] {
     else if ((d.confidence || 0) > (deduped[dupIdx].confidence || 0)) deduped[dupIdx] = d
   }
   return deduped
+}
+
+// ── Post-process: enforce is_new:false for low confidence in comparison mode ──
+function enforceComparisonRules(damages: any[], hasBaseline: boolean): any[] {
+  if (!hasBaseline) return damages
+  return damages.map(d => ({
+    ...d,
+    is_new: d.is_new && (d.confidence || 0) >= 85 ? true : false,
+  }))
 }
 
 // ── AI call ───────────────────────────────────────────────────────
@@ -166,7 +184,7 @@ export async function POST(req: NextRequest) {
     const hasBaseline = baselineDamages && baselineDamages.length > 0
     const isRental = fleetType === 'rental'
     const baselineText = hasBaseline
-      ? `\n\nBASELINE (do NOT flag as new):\n${baselineDamages.map((d: any) => `- [${d.severity}] ${d.location}: ${d.description}`).join('\n')}`
+      ? `\n\nLAST INSPECTION DAMAGE RECORD (compare against these — do NOT flag as new unless clearly different location/type):\n${baselineDamages.map((d: any) => `- [${d.severity}] ${d.location}: ${d.description}`).join('\n')}`
       : ''
 
     const vehicleContext = vehicleType === 'stepvan'
@@ -195,7 +213,14 @@ export async function POST(req: NextRequest) {
     const [r1, r2, r3] = await Promise.all(promises)
     if (!r1 && !r2) return NextResponse.json({ error: 'Analysis failed — no results returned. Please try again.' }, { status: 500 })
 
-    const allDamages = deduplicateDamages(deduplicateDamages(r1?.damages || [], r2?.damages || []), r3?.damages || [])
+    const rawDamages = deduplicateDamages(
+      deduplicateDamages(r1?.damages || [], r2?.damages || []),
+      r3?.damages || []
+    )
+
+    // Enforce is_new:false for anything below 85% confidence in comparison mode
+    const allDamages = enforceComparisonRules(rawDamages, hasBaseline)
+
     allDamages.sort((a, b) => {
       const s: Record<string, number> = { critical: 0, moderate: 1, minor: 2 }
       const diff = (s[a.severity] ?? 2) - (s[b.severity] ?? 2)
@@ -204,6 +229,7 @@ export async function POST(req: NextRequest) {
 
     const lowConf = allDamages.filter(d => (d.confidence || 100) < 70).length
     const needsVerif = allDamages.filter(d => d.needsVerification).length
+    const newDamageCount = allDamages.filter(d => d.is_new).length
     const condOrder = ['Critical', 'Poor', 'Fair', 'Good']
     const urgOrder = ['Immediate', 'Within 1 week', 'Within 1 month', 'Monitoring only']
 
@@ -212,18 +238,28 @@ export async function POST(req: NextRequest) {
     const u1 = r1?.estimatedRepairUrgency || 'Monitoring only'
     const u2 = r2?.estimatedRepairUrgency || 'Monitoring only'
 
+    // In comparison mode, overall condition should reflect NEW damage only
+    // If no new damage found, default to Good unless existing damage is critical
+    const overallCondition = hasBaseline && newDamageCount === 0
+      ? 'Good'
+      : condOrder[Math.min(condOrder.indexOf(c1), condOrder.indexOf(c2))] || c1
+
     return NextResponse.json({
-      overallCondition: condOrder[Math.min(condOrder.indexOf(c1), condOrder.indexOf(c2))] || c1,
+      overallCondition,
       summary: r1?.summary || r2?.summary || '',
       totalEstimatedRepairCost: {
-        low: allDamages.reduce((s, d) => s + (d.repairEstimate?.low || 0), 0),
-        high: allDamages.reduce((s, d) => s + (d.repairEstimate?.high || 0), 0),
+        low: allDamages.filter(d => d.is_new).reduce((s, d) => s + (d.repairEstimate?.low || 0), 0),
+        high: allDamages.filter(d => d.is_new).reduce((s, d) => s + (d.repairEstimate?.high || 0), 0),
       },
       damages: allDamages,
-      followUpRequired: r1?.followUpRequired || r2?.followUpRequired || lowConf > 0 || needsVerif > 0,
-      estimatedRepairUrgency: urgOrder[Math.min(urgOrder.indexOf(u1), urgOrder.indexOf(u2))] || u1,
+      followUpRequired: r1?.followUpRequired || r2?.followUpRequired || lowConf > 0 || needsVerif > 0 || newDamageCount > 0,
+      estimatedRepairUrgency: hasBaseline && newDamageCount === 0
+        ? 'Monitoring only'
+        : urgOrder[Math.min(urgOrder.indexOf(u1), urgOrder.indexOf(u2))] || u1,
       lowConfidenceFindings: lowConf,
       needsVerificationFindings: needsVerif,
+      newDamageCount,
+      comparisonMode: hasBaseline,
       _truncated: r1?._truncated || r2?._truncated,
     })
   } catch (err: any) {
