@@ -46,6 +46,7 @@ HIGH-MISS PATTERNS:
 9. A-pillar/cab dent — below windshield junction, sideswipe damage
 10. Transit step rail — chrome strip lower body, blends with shadow
 
+PHOTO DISTANCE: Photos may be taken from varying distances due to tight hub spaces. Close-up photos showing partial panels are valid — assess what is visible, do not penalize for incomplete vehicle coverage. If only part of a panel is visible, assess that part fully and note "partial view" in the description if relevant.
 RULES: Continuous damage = ONE finding with start/end points. Bumper = whole unit assessment. Each photo independent. Headlight oxidation only if clearly visible. Uncertain curved surface = "possible — verify".`
 
 // ── Prompt builder ────────────────────────────────────────────────
