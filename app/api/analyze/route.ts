@@ -6,7 +6,6 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 export const maxDuration = 60
 export const dynamic = 'force-dynamic'
 
-// ── Vehicle weak points ───────────────────────────────────────────
 const WEAK_POINTS: Record<string, string> = {
   sprinter: `Transit/Sprinter/ProMaster:
 - Front: gray/charcoal bumper = FACTORY. Cab cheek panels (headlight-to-wheel-arch) = curb strikes. 3 amber roof marker lights = DOT, check all.
@@ -24,15 +23,15 @@ const WEAK_POINTS: Record<string, string> = {
   boxtruck: `Box Truck: rear bumper dock strikes, lower panel rust/scrapes, roof front edge, dual rear tire outer sidewalls, cargo door seals, underride guard, frame rails.`,
 }
 
-// ── Orientation ───────────────────────────────────────────────────
 const ORIENTATION = `USA: driver=LEFT. Front photo: driver=YOUR LEFT. Rear photo: driver=YOUR RIGHT. Always say "driver side" or "passenger side", never left/right alone.`
 
-// ── Damage knowledge ──────────────────────────────────────────────
 const DAMAGE_KNOWLEDGE = `FLEET-TRAINED RULES:
 
 PAINT SEVERITY: scuff(paint intact)=minor → clearcoat scratch=minor-mod → bare metal=moderate+RUST RISK → bubbling rust=moderate urgent → active rust=critical. Transit bare gray bumper=moderate not scuff.
 
 RUST: rotor/drum rust=NORMAL WEAR. Surface corrosion=minor. Bubbling/flaking=moderate escalate. Seam rust=water intrusion risk.
+
+PHOTO DISTANCE: Photos may be taken from varying distances due to tight hub/dock spaces. Close-up photos showing partial panels are valid — assess what IS visible fully and accurately. Do not penalize for incomplete vehicle coverage. If only part of a panel is visible, assess that area thoroughly. Note "partial view — [zone]" in description only if the partial view limits your assessment.
 
 HIGH-MISS PATTERNS:
 1. Missing lower front fascia — mechanical parts visible below grille = flag moderate-critical
@@ -46,20 +45,12 @@ HIGH-MISS PATTERNS:
 9. A-pillar/cab dent — below windshield junction, sideswipe damage
 10. Transit step rail — chrome strip lower body, blends with shadow
 
-PHOTO DISTANCE: Photos may be taken from varying distances due to tight hub spaces. Close-up photos showing partial panels are valid — assess what is visible, do not penalize for incomplete vehicle coverage. If only part of a panel is visible, assess that part fully and note "partial view" in the description if relevant.
 RULES: Continuous damage = ONE finding with start/end points. Bumper = whole unit assessment. Each photo independent. Headlight oxidation only if clearly visible. Uncertain curved surface = "possible — verify".`
 
-// ── Prompt builder ────────────────────────────────────────────────
 function buildPrompt(
-  truckInfo: string,
-  vehicleContext: string,
-  vehicleType: string,
-  inspectionType: string,
-  inspector: string,
-  notes: string,
-  baselineText: string,
-  hasBaseline: boolean,
-  isRental: boolean,
+  truckInfo: string, vehicleContext: string, vehicleType: string,
+  inspectionType: string, inspector: string, notes: string,
+  baselineText: string, hasBaseline: boolean, isRental: boolean,
   photoGroup: 'exterior' | 'interior'
 ): string {
   const weakPoints = WEAK_POINTS[vehicleType] || ''
@@ -78,11 +69,9 @@ Cargo: threshold plate, tie-down tracks, floor damage, wall/ceiling dents or hol
 
   const rentalNote = isRental ? `\nRENTAL: Heightened sensitivity — document even minor items, do not round down severity.` : ''
 
-  // ── Baseline vs rolling comparison instructions ───────────────
   const baselineInstructions = !hasBaseline
     ? `BASELINE INSPECTION — INITIAL DOCUMENTATION MODE:
 This is the legal baseline for all future comparisons. Document ALL damage including minor items. When in doubt, include it. Mark all findings is_new: false.`
-
     : `ROLLING COMPARISON MODE — WEEK-OVER-WEEK CHANGE DETECTION:
 You are comparing this week's photos against last week's documented damage listed below.
 
@@ -91,7 +80,7 @@ CRITICAL RULES FOR COMPARISON MODE:
 2. Lighting differences, shadow variation, and camera angle changes are NOT new damage — default to is_new: false when uncertain
 3. A finding must be in a clearly DIFFERENT location than any existing baseline entry to be flagged as new
 4. If a baseline entry says "lower driver side panel scrape" and you see a mark in the same zone, mark is_new: false even if it looks slightly different — angle/lighting variation is expected
-5. Only flag is_new: true for damage that is unambiguously in a new location or is a clearly different type of damage (e.g. a fresh dent where there was previously only a scrape)
+5. Only flag is_new: true for damage that is unambiguously in a new location or is a clearly different type of damage
 6. When in doubt — is_new: false. False negatives are better than false positives for weekly checks.
 7. Still document ALL damage (old and new) so the record is complete, but is_new must be conservative.`
 
@@ -116,7 +105,6 @@ JSON only, no markdown:
 {"overallCondition":"Good|Fair|Poor|Critical","summary":"2-3 sentences","totalEstimatedRepairCost":{"low":0,"high":0},"damages":[{"severity":"critical|moderate|minor","location":"driver/passenger side + zone","description":"size, paint status, full extent","recommendation":"specific action","is_new":false,"confidence":85,"needsVerification":false,"verificationNote":"","repairEstimate":{"low":0,"high":0,"method":"DIY or Shop"},"diyReplaceable":false,"partName":"","partSearchQuery":""}],"followUpRequired":false,"estimatedRepairUrgency":"Immediate|Within 1 week|Within 1 month|Monitoring only"}`
 }
 
-// ── Deduplication ─────────────────────────────────────────────────
 function deduplicateDamages(damages1: any[], damages2: any[]): any[] {
   const all = [...damages1, ...damages2]
   const deduped: any[] = []
@@ -137,7 +125,6 @@ function deduplicateDamages(damages1: any[], damages2: any[]): any[] {
   return deduped
 }
 
-// ── Post-process: enforce is_new:false for low confidence in comparison mode ──
 function enforceComparisonRules(damages: any[], hasBaseline: boolean): any[] {
   if (!hasBaseline) return damages
   return damages.map(d => ({
@@ -146,7 +133,6 @@ function enforceComparisonRules(damages: any[], hasBaseline: boolean): any[] {
   }))
 }
 
-// ── AI call ───────────────────────────────────────────────────────
 async function analyzePhotos(images: any[], prompt: string): Promise<any> {
   const content: any[] = images.map(img => ({
     type: 'image',
@@ -177,7 +163,6 @@ async function analyzePhotos(images: any[], prompt: string): Promise<any> {
   }
 }
 
-// ── Main handler ──────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const { images, truckInfo, inspectionType, inspector, notes, baselineDamages, vehicleType, fleetType } = await req.json()
@@ -218,10 +203,7 @@ export async function POST(req: NextRequest) {
       deduplicateDamages(r1?.damages || [], r2?.damages || []),
       r3?.damages || []
     )
-
-    // Enforce is_new:false for anything below 85% confidence in comparison mode
     const allDamages = enforceComparisonRules(rawDamages, hasBaseline)
-
     allDamages.sort((a, b) => {
       const s: Record<string, number> = { critical: 0, moderate: 1, minor: 2 }
       const diff = (s[a.severity] ?? 2) - (s[b.severity] ?? 2)
@@ -233,20 +215,13 @@ export async function POST(req: NextRequest) {
     const newDamageCount = allDamages.filter(d => d.is_new).length
     const condOrder = ['Critical', 'Poor', 'Fair', 'Good']
     const urgOrder = ['Immediate', 'Within 1 week', 'Within 1 month', 'Monitoring only']
-
     const c1 = r1?.overallCondition || 'Good'
     const c2 = r2?.overallCondition || 'Good'
     const u1 = r1?.estimatedRepairUrgency || 'Monitoring only'
     const u2 = r2?.estimatedRepairUrgency || 'Monitoring only'
 
-    // In comparison mode, overall condition should reflect NEW damage only
-    // If no new damage found, default to Good unless existing damage is critical
-    const overallCondition = hasBaseline && newDamageCount === 0
-      ? 'Good'
-      : condOrder[Math.min(condOrder.indexOf(c1), condOrder.indexOf(c2))] || c1
-
     return NextResponse.json({
-      overallCondition,
+      overallCondition: hasBaseline && newDamageCount === 0 ? 'Good' : condOrder[Math.min(condOrder.indexOf(c1), condOrder.indexOf(c2))] || c1,
       summary: r1?.summary || r2?.summary || '',
       totalEstimatedRepairCost: {
         low: allDamages.filter(d => d.is_new).reduce((s, d) => s + (d.repairEstimate?.low || 0), 0),
@@ -254,9 +229,7 @@ export async function POST(req: NextRequest) {
       },
       damages: allDamages,
       followUpRequired: r1?.followUpRequired || r2?.followUpRequired || lowConf > 0 || needsVerif > 0 || newDamageCount > 0,
-      estimatedRepairUrgency: hasBaseline && newDamageCount === 0
-        ? 'Monitoring only'
-        : urgOrder[Math.min(urgOrder.indexOf(u1), urgOrder.indexOf(u2))] || u1,
+      estimatedRepairUrgency: hasBaseline && newDamageCount === 0 ? 'Monitoring only' : urgOrder[Math.min(urgOrder.indexOf(u1), urgOrder.indexOf(u2))] || u1,
       lowConfidenceFindings: lowConf,
       needsVerificationFindings: needsVerif,
       newDamageCount,
