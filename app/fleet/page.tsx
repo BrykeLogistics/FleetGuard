@@ -27,7 +27,7 @@ const vtLabel = (v:string) => v==='sprinter'?'Sprinter Van':v==='stepvan'?'Step 
 const vtColor = (v:string) => v==='sprinter'?{bg:'#EAF3DE',color:'#27500A'}:v==='stepvan'?{bg:'#E6F1FB',color:'#0C447C'}:{bg:'#FAEEDA',color:'#633806'}
 
 // ── Lightbox ──────────────────────────────────────────────────────
-function Lightbox({ photos, index, onClose, onPrev, onNext }: { photos: {url:string,date?:string}[], index: number, onClose:()=>void, onPrev:()=>void, onNext:()=>void }) {
+function Lightbox({ photos, index, onClose, onPrev, onNext }: { photos:{url:string,date?:string}[], index:number, onClose:()=>void, onPrev:()=>void, onNext:()=>void }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key==='Escape') onClose()
@@ -37,18 +37,16 @@ function Lightbox({ photos, index, onClose, onPrev, onNext }: { photos: {url:str
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, onPrev, onNext])
-
   const photo = photos[index]
   if (!photo) return null
-
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.92)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div onClick={e=>e.stopPropagation()} style={{ position:'relative', maxWidth:'95vw', maxHeight:'95vh', display:'flex', flexDirection:'column', alignItems:'center' }}>
         <img src={photo.url} style={{ maxWidth:'90vw', maxHeight:'85vh', objectFit:'contain', borderRadius:8 }} />
-        {photo.date && <div style={{ color:'rgba(255,255,255,0.5)', fontSize:12, marginTop:8 }}>{photo.date} · {index+1} of {photos.length}</div>}
+        {photo.date&&<div style={{ color:'rgba(255,255,255,0.5)', fontSize:12, marginTop:8 }}>{photo.date} · {index+1} of {photos.length}</div>}
         <button onClick={onClose} style={{ position:'absolute', top:-12, right:-12, width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', color:'white', fontSize:20, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
-        {index > 0 && <button onClick={onPrev} style={{ position:'absolute', left:-48, top:'50%', transform:'translateY(-50%)', width:40, height:40, borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', color:'white', fontSize:22, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>‹</button>}
-        {index < photos.length-1 && <button onClick={onNext} style={{ position:'absolute', right:-48, top:'50%', transform:'translateY(-50%)', width:40, height:40, borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', color:'white', fontSize:22, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>›</button>}
+        {index>0&&<button onClick={onPrev} style={{ position:'absolute', left:-48, top:'50%', transform:'translateY(-50%)', width:40, height:40, borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', color:'white', fontSize:22, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>‹</button>}
+        {index<photos.length-1&&<button onClick={onNext} style={{ position:'absolute', right:-48, top:'50%', transform:'translateY(-50%)', width:40, height:40, borderRadius:'50%', background:'rgba(255,255,255,0.15)', border:'none', color:'white', fontSize:22, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>›</button>}
       </div>
     </div>
   )
@@ -92,7 +90,7 @@ function ListTable({ trucks, onOpen, onEdit }: any) {
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto auto', padding:'10px 16px', background:'#f7f7f6', borderBottom:'0.5px solid rgba(0,0,0,0.08)', fontSize:11, fontWeight:500, color:'#888', textTransform:'uppercase', letterSpacing:'0.05em' }}>
         <span>Truck</span><span>Driver</span><span>CSA / Last inspected</span><span>Status</span><span></span>
       </div>
-      {trucks.map((truck: any, i: number) => {
+      {trucks.map((truck:any, i:number) => {
         const status = truckStatus(truck)
         const last = lastInspection(truck)
         return (
@@ -101,7 +99,7 @@ function ListTable({ trucks, onOpen, onEdit }: any) {
             onMouseLeave={e=>(e.currentTarget.style.background='white')}
             onClick={()=>onOpen(truck)}>
             <div>
-              <div style={{ fontSize:13, fontWeight:600 }}>#{truck.truck_number} {truck.fleet_type==='rental'&&<span style={{ fontSize:10, background:'#FAEEDA', color:'#633806', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>Rental</span>}</div>
+              <div style={{ fontSize:13, fontWeight:600 }}>#{truck.truck_number}{truck.fleet_type==='rental'&&<span style={{ fontSize:10, background:'#FAEEDA', color:'#633806', padding:'1px 5px', borderRadius:8, marginLeft:4 }}>Rental</span>}</div>
               {truck.vin&&<div style={{ fontSize:11, color:'#aaa', fontFamily:'monospace' }}>{truck.vin}</div>}
             </div>
             <div style={{ fontSize:13, color:'#555' }}>{truck.driver_name}</div>
@@ -119,7 +117,7 @@ function ListTable({ trucks, onOpen, onEdit }: any) {
 }
 
 interface FormProps {
-  form: typeof emptyForm; setForm:(f:typeof emptyForm)=>void
+  form:typeof emptyForm; setForm:(f:typeof emptyForm)=>void
   onSubmit:(e:React.FormEvent)=>void; onCancel:()=>void
   saving:boolean; editingId:string|null; vinLoading:boolean; vinMessage:string
   csaList:string[]; onLookupVin:()=>void; isOwner:boolean
@@ -183,6 +181,71 @@ function TruckForm({ form, setForm, onSubmit, onCancel, saving, editingId, vinLo
   )
 }
 
+// ── Grouped inspection photos ─────────────────────────────────────
+function InspectionPhotoGroups({ inspections, photos, photoUrls, onOpenLightbox }: {
+  inspections: any[], photos: any[], photoUrls: {[key:string]:string},
+  onOpenLightbox: (photos: {url:string,date:string}[], index: number) => void
+}) {
+  const [expandedId, setExpandedId] = useState<string|null>(inspections[0]?.id || null)
+
+  // Group photos by inspection_id
+  const photosByInspection: Record<string, any[]> = {}
+  for (const p of photos) {
+    if (!photosByInspection[p.inspection_id]) photosByInspection[p.inspection_id] = []
+    photosByInspection[p.inspection_id].push(p)
+  }
+
+  return (
+    <div className="card" style={{ padding:'16px', gridColumn:'1/-1' }}>
+      <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Inspection photos</div>
+      {inspections.map((insp, inspIdx) => {
+        const inspPhotos = photosByInspection[insp.id] || []
+        const isExpanded = expandedId === insp.id
+        const isFirst = inspIdx === 0
+        const lbPhotos = inspPhotos.map(p => ({ url: photoUrls[p.id]||'', date: new Date(p.created_at).toLocaleDateString() })).filter(p=>p.url)
+
+        return (
+          <div key={insp.id} style={{ borderBottom:'0.5px solid rgba(0,0,0,0.07)', marginBottom:8, paddingBottom:8 }}>
+            <button
+              onClick={() => setExpandedId(isExpanded ? null : insp.id)}
+              style={{ width:'100%', background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 0', textAlign:'left' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <span style={{ fontSize:13, fontWeight:isFirst?600:500, color:'#1a1a1a' }}>
+                  📅 {new Date(insp.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })}
+                </span>
+                <span style={{ fontSize:12, color:'#888' }}>{insp.inspection_type}</span>
+                {isFirst && <span style={{ fontSize:11, background:'#E6F1FB', color:'#0C447C', padding:'1px 6px', borderRadius:10 }}>Latest</span>}
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:12, color:'#aaa' }}>{inspPhotos.length} photo{inspPhotos.length!==1?'s':''}</span>
+                <span style={{ fontSize:14, color:'#888', transform:isExpanded?'rotate(90deg)':'none', transition:'transform 0.2s' }}>›</span>
+              </div>
+            </button>
+
+            {isExpanded && inspPhotos.length > 0 && (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))', gap:8, marginTop:8 }}>
+                {inspPhotos.map((p, i) => (
+                  <div key={p.id} style={{ cursor:photoUrls[p.id]?'pointer':'default' }}
+                    onClick={() => photoUrls[p.id] && onOpenLightbox(lbPhotos, lbPhotos.findIndex(lp=>lp.url===photoUrls[p.id]))}>
+                    {photoUrls[p.id]
+                      ? <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', display:'block', transition:'opacity 0.15s' }}
+                          onMouseEnter={e=>(e.currentTarget.style.opacity='0.85')}
+                          onMouseLeave={e=>(e.currentTarget.style.opacity='1')} />
+                      : <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {isExpanded && inspPhotos.length === 0 && (
+              <div style={{ fontSize:12, color:'#aaa', padding:'8px 0' }}>No photos for this inspection</div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function FleetPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -204,6 +267,7 @@ function FleetPage() {
   const [photoUrls, setPhotoUrls] = useState<{[key:string]:string}>({})
   const [csaFilter, setCsaFilter] = useState('all')
   const [activeFilter, setActiveFilter] = useState<string|null>(null)
+  const [lightboxPhotos, setLightboxPhotos] = useState<{url:string,date:string}[]>([])
   const [lightboxIndex, setLightboxIndex] = useState<number|null>(null)
 
   useEffect(()=>{ if (!profileLoading) loadTrucks() }, [profileLoading])
@@ -228,7 +292,7 @@ function FleetPage() {
     const [inspRes, dmgRes, photoRes] = await Promise.all([
       supabase.from('inspections').select('*').eq('truck_id',truck.id).order('created_at',{ascending:false}),
       supabase.from('damages').select('*, inspections(created_at,inspection_type)').eq('truck_id',truck.id).order('created_at',{ascending:false}),
-      supabase.from('inspection_photos').select('*').eq('truck_id',truck.id).order('created_at',{ascending:false}).limit(20),
+      supabase.from('inspection_photos').select('*').eq('truck_id',truck.id).order('created_at',{ascending:false}),
     ])
     setTruckDetail({inspections:inspRes.data||[],damages:dmgRes.data||[],photos:photoRes.data||[]})
     const urlEntries = await Promise.all(
@@ -242,6 +306,11 @@ function FleetPage() {
   }
 
   function closeTruck() { setSelectedTruck(null); setTruckDetail({inspections:[],damages:[],photos:[]}); setPhotoUrls({}) }
+
+  function openLightbox(photos: {url:string,date:string}[], index: number) {
+    setLightboxPhotos(photos)
+    setLightboxIndex(index)
+  }
 
   async function lookupVin() {
     const vin = form.vin
@@ -327,13 +396,14 @@ function FleetPage() {
   const cardProps = {editingId,showForm,onOpen:openTruck,onEdit:startEdit,onDelete:deleteTruck,onInspect:(id:string)=>router.push(`/inspect?truck=${id}`)}
   const formProps = {form,setForm,onSubmit:saveTruck,onCancel:cancelEdit,saving,editingId,vinLoading,vinMessage,csaList,onLookupVin:lookupVin,isOwner:isOwner||false}
 
-  // Build photo list for lightbox
-  const { photos } = truckDetail
-  const lightboxPhotos = photos.map((p,i) => ({ url:photoUrls[p.id]||'', date:new Date(p.created_at).toLocaleDateString() })).filter(p=>p.url)
+  // Most recent inspection photos for PhotoStrip
+  const { inspections, damages, photos } = truckDetail
+  const mostRecentInspId = inspections[0]?.id
+  const mostRecentPhotos = photos.filter(p => p.inspection_id === mostRecentInspId)
+  const stripPhotos = mostRecentPhotos.map((p,i) => ({ url:photoUrls[p.id]||'', label:`Photo ${i+1}`, date:new Date(p.created_at).toLocaleDateString() }))
 
   // ── Truck detail panel ─────────────────────────────────────────
   if (selectedTruck) {
-    const { inspections, damages } = truckDetail
     const newDamages = damages.filter(d=>d.is_new)
     return (
       <div>
@@ -390,28 +460,22 @@ function FleetPage() {
             </div>
           </div>
 
-          {!loadingDetail&&<PhotoStrip photos={photos.map((p,i)=>({url:photoUrls[p.id]||'',label:`Photo ${i+1}`,date:new Date(p.created_at).toLocaleDateString()}))} />}
+          {/* Photo strip — most recent inspection only */}
+          {!loadingDetail && stripPhotos.length > 0 && <PhotoStrip photos={stripPhotos} />}
           {loadingDetail&&<div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading...</div>}
 
           {!loadingDetail&&(
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-              {/* Photos */}
-              <div className="card" style={{ padding:'16px', gridColumn:'1/-1' }}>
-                <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Photos ({photos.length})</div>
-                {photos.length===0
-                  ? <div style={{ color:'#aaa', fontSize:13, padding:'20px 0', textAlign:'center' }}>No photos yet</div>
-                  : <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))', gap:8 }}>
-                      {photos.map((p,i)=>(
-                        <div key={p.id} style={{ cursor:'pointer' }} onClick={()=>photoUrls[p.id]&&setLightboxIndex(i)}>
-                          {photoUrls[p.id]
-                            ? <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', display:'block', transition:'opacity 0.15s' }} onMouseEnter={e=>(e.currentTarget.style.opacity='0.85')} onMouseLeave={e=>(e.currentTarget.style.opacity='1')} />
-                            : <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>}
-                          <div style={{ fontSize:10, color:'#aaa', marginTop:3, textAlign:'center' }}>{new Date(p.created_at).toLocaleDateString()}</div>
-                        </div>
-                      ))}
-                    </div>
-                }
-              </div>
+
+              {/* Grouped inspection photos */}
+              {inspections.length > 0 && (
+                <InspectionPhotoGroups
+                  inspections={inspections}
+                  photos={photos}
+                  photoUrls={photoUrls}
+                  onOpenLightbox={openLightbox}
+                />
+              )}
 
               {/* Inspection history */}
               <div className="card" style={{ padding:'16px' }}>
