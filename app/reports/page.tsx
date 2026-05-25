@@ -17,10 +17,8 @@ function Lightbox({ photos, index, onClose, onPrev, onNext }: { photos:{url:stri
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, onPrev, onNext])
-
   const photo = photos[index]
   if (!photo) return null
-
   return (
     <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.92)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div onClick={e=>e.stopPropagation()} style={{ position:'relative', maxWidth:'95vw', maxHeight:'95vh', display:'flex', flexDirection:'column', alignItems:'center' }}>
@@ -47,7 +45,9 @@ function ReportsContent() {
   const [activeFilter, setActiveFilter] = useState<string|null>(null)
   const [photos, setPhotos] = useState<any[]>([])
   const [photoUrls, setPhotoUrls] = useState<{[key:string]:string}>({})
+  const [lightboxPhotos, setLightboxPhotos] = useState<{url:string,date:string}[]>([])
   const [lightboxIndex, setLightboxIndex] = useState<number|null>(null)
+  const [expandedInspId, setExpandedInspId] = useState<string|null>(null)
 
   useEffect(()=>{ if (!profileLoading) loadTrucks() }, [profileLoading])
   useEffect(()=>{ if (selectedTruck) loadReport() }, [selectedTruck])
@@ -62,15 +62,17 @@ function ReportsContent() {
   }
 
   async function loadReport() {
-    setLoading(true); setLightboxIndex(null)
+    setLoading(true); setLightboxIndex(null); setExpandedInspId(null)
     const [inspRes, dmgRes, photoRes] = await Promise.all([
       supabase.from('inspections').select('*').eq('truck_id',selectedTruck).order('created_at',{ascending:false}),
       supabase.from('damages').select('*, inspections(created_at,inspection_type,inspector_name)').eq('truck_id',selectedTruck).order('created_at',{ascending:false}),
-      supabase.from('inspection_photos').select('*').eq('truck_id',selectedTruck).order('created_at',{ascending:false}).limit(40),
+      supabase.from('inspection_photos').select('*').eq('truck_id',selectedTruck).order('created_at',{ascending:false}),
     ])
     setInspections(inspRes.data||[])
     setDamages(dmgRes.data||[])
     setPhotos(photoRes.data||[])
+    // Auto-expand most recent inspection
+    if (inspRes.data && inspRes.data.length > 0) setExpandedInspId(inspRes.data[0].id)
     const urlEntries = await Promise.all(
       (photoRes.data||[]).map(async (p:any) => {
         const { data } = await supabase.storage.from('inspection-photos').createSignedUrl(p.storage_path,3600)
@@ -99,6 +101,10 @@ function ReportsContent() {
     a.download=`FleetGuard_${truck?.truck_number}_report.csv`; a.click()
   }
 
+  function openLightbox(lbPhotos: {url:string,date:string}[], index: number) {
+    setLightboxPhotos(lbPhotos); setLightboxIndex(index)
+  }
+
   const truck = trucks.find(t=>t.id===selectedTruck)
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7)
   const newDamages = damages.filter(d=>d.is_new)
@@ -107,14 +113,11 @@ function ReportsContent() {
   const sevColor = (s:string) => s==='critical'?'#E24B4A':s==='moderate'?'#EF9F27':'#639922'
   const condBadge = (c:string) => c==='Good'?'badge-green':(c==='Critical'||c==='Poor')?'badge-red':c==='Fair'?'badge-amber':'badge-gray'
 
-  // Build lightbox photo list (only loaded photos)
-  const lightboxPhotos = photos
-    .map((p,i)=>({ url:photoUrls[p.id]||'', date:new Date(p.created_at).toLocaleDateString(), origIdx:i }))
-    .filter(p=>p.url)
-
-  function openLightbox(origIdx: number) {
-    const lbIdx = lightboxPhotos.findIndex(p=>p.origIdx===origIdx)
-    if (lbIdx !== -1) setLightboxIndex(lbIdx)
+  // Group photos by inspection
+  const photosByInspection: Record<string,any[]> = {}
+  for (const p of photos) {
+    if (!photosByInspection[p.inspection_id]) photosByInspection[p.inspection_id] = []
+    photosByInspection[p.inspection_id].push(p)
   }
 
   return (
@@ -178,20 +181,55 @@ function ReportsContent() {
               </div>
             </div>
 
-            {/* Photos — full grid, all clickable */}
-            {photos.length > 0 && (
+            {/* Grouped photos by inspection — collapsed rows */}
+            {inspections.length > 0 && photos.length > 0 && (
               <div className="card" style={{ padding:'20px', marginBottom:14 }}>
-                <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Photos ({photos.length}) <span style={{ fontSize:12, color:'#aaa', fontWeight:400 }}>— tap to enlarge</span></div>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(140px,1fr))', gap:8 }}>
-                  {photos.map((p,i)=>(
-                    <div key={p.id} style={{ cursor:photoUrls[p.id]?'pointer':'default' }} onClick={()=>photoUrls[p.id]&&openLightbox(i)}>
-                      {photoUrls[p.id]
-                        ? <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', display:'block', transition:'opacity 0.15s' }} onMouseEnter={e=>(e.currentTarget.style.opacity='0.85')} onMouseLeave={e=>(e.currentTarget.style.opacity='1')} />
-                        : <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>}
-                      <div style={{ fontSize:10, color:'#aaa', marginTop:3, textAlign:'center' }}>{new Date(p.created_at).toLocaleDateString()}</div>
+                <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Inspection photos</div>
+                {inspections.map((insp, inspIdx) => {
+                  const inspPhotos = photosByInspection[insp.id] || []
+                  const isExpanded = expandedInspId === insp.id
+                  const isFirst = inspIdx === 0
+                  const lbPhotos = inspPhotos.map(p => ({ url:photoUrls[p.id]||'', date:new Date(p.created_at).toLocaleDateString() })).filter(p=>p.url)
+
+                  return (
+                    <div key={insp.id} style={{ borderBottom:'0.5px solid rgba(0,0,0,0.07)', marginBottom:8, paddingBottom:8 }}>
+                      <button
+                        onClick={()=>setExpandedInspId(isExpanded?null:insp.id)}
+                        style={{ width:'100%', background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 0', textAlign:'left' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                          <span style={{ fontSize:13, fontWeight:isFirst?600:500, color:'#1a1a1a' }}>
+                            📅 {new Date(insp.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+                          </span>
+                          <span style={{ fontSize:12, color:'#888' }}>{insp.inspection_type}</span>
+                          {isFirst&&<span style={{ fontSize:11, background:'#E6F1FB', color:'#0C447C', padding:'1px 6px', borderRadius:10 }}>Latest</span>}
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <span style={{ fontSize:12, color:'#aaa' }}>{inspPhotos.length} photo{inspPhotos.length!==1?'s':''}</span>
+                          <span style={{ fontSize:14, color:'#888', transform:isExpanded?'rotate(90deg)':'none', transition:'transform 0.2s', display:'inline-block' }}>›</span>
+                        </div>
+                      </button>
+
+                      {isExpanded && inspPhotos.length > 0 && (
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))', gap:8, marginTop:8 }}>
+                          {inspPhotos.map((p, i) => (
+                            <div key={p.id} style={{ cursor:photoUrls[p.id]?'pointer':'default' }}
+                              onClick={()=>photoUrls[p.id]&&openLightbox(lbPhotos, lbPhotos.findIndex(lp=>lp.url===photoUrls[p.id]))}>
+                              {photoUrls[p.id]
+                                ? <img src={photoUrls[p.id]} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', display:'block', transition:'opacity 0.15s' }}
+                                    onMouseEnter={e=>(e.currentTarget.style.opacity='0.85')}
+                                    onMouseLeave={e=>(e.currentTarget.style.opacity='1')} />
+                                : <div style={{ width:'100%', aspectRatio:'4/3', background:'#f0efed', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, color:'#aaa' }}>Loading...</div>}
+                              <div style={{ fontSize:10, color:'#aaa', marginTop:3, textAlign:'center' }}>{new Date(p.created_at).toLocaleDateString()}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {isExpanded && inspPhotos.length === 0 && (
+                        <div style={{ fontSize:12, color:'#aaa', padding:'8px 0' }}>No photos for this inspection</div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
             )}
 
