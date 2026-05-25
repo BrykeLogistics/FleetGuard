@@ -47,7 +47,7 @@ function InspectContent() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [savedInspectionId, setSavedInspectionId] = useState('')
-  const { profile, isDriver, isOwner, isManager, loading: profileLoading } = useProfile()
+  const { profile, isDriver, loading: profileLoading } = useProfile()
   const [missedDamage, setMissedDamage] = useState('')
   const [error, setError] = useState('')
   const [showGuided, setShowGuided] = useState(false)
@@ -56,15 +56,11 @@ function InspectContent() {
 
   async function loadTrucks() {
     if (!profile?.company_id) return
-
     let query = supabase.from('trucks').select('*').eq('company_id', profile.company_id).order('truck_number')
-
-    // Managers and drivers only see their CSA
-    if (isDriver || isManager) {
+    if (isDriver) {
       if (!profile.csa) return
       query = query.eq('csa', profile.csa)
     }
-
     const { data } = await query
     setTrucks(data || [])
   }
@@ -87,9 +83,7 @@ function InspectContent() {
   function handleVideoFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    setVideoFile(file)
-    setExtractedFrames([])
-    setExtractProgress(0)
+    setVideoFile(file); setExtractedFrames([]); setExtractProgress(0)
     setVideoUrl(URL.createObjectURL(file))
   }
 
@@ -137,7 +131,8 @@ function InspectContent() {
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: mimeType })
         const url = URL.createObjectURL(blob)
-        setLiveVideoUrl(url); setVideoFile(new File([blob], 'recording.mp4', { type: mimeType })); setVideoUrl(url); setVideoSubMode('upload')
+        setLiveVideoUrl(url); setVideoFile(new File([blob], 'recording.mp4', { type: mimeType }))
+        setVideoUrl(url); setVideoSubMode('upload')
         stream.getTracks().forEach(t => t.stop()); setRecordingStream(null)
       }
       recorder.start(100); setMediaRecorder(recorder); setIsRecording(true); setRecordingSeconds(0)
@@ -242,9 +237,11 @@ function InspectContent() {
           severity: d.severity, location: d.location, description: d.description,
           recommendation: d.recommendation || '', is_new: d.is_new,
           user_id: user.id, company_id: profile?.company_id,
-          repair_estimate_low: d.repairEstimate?.low || 0, repair_estimate_high: d.repairEstimate?.high || 0,
+          repair_estimate_low: d.repairEstimate?.low || 0,
+          repair_estimate_high: d.repairEstimate?.high || 0,
           repair_estimate_notes: d.repairEstimate?.notes || '',
-          diy_replaceable: d.diyReplaceable || false, part_name: d.partName || '', part_search_query: d.partSearchQuery || '',
+          diy_replaceable: d.diyReplaceable || false,
+          part_name: d.partName || '', part_search_query: d.partSearchQuery || '',
         }))
       )
     }
@@ -277,6 +274,10 @@ function InspectContent() {
   const sevDot = (s: string) => s === 'critical' ? '#E24B4A' : s === 'moderate' ? '#EF9F27' : '#639922'
   const sourceFrames = uploadMode === 'video' ? extractedFrames : previews
   const readyToAnalyze = sourceFrames.length > 0
+
+  // Determine if this is comparison mode with no new damage
+  const isComparisonMode = result?.comparisonMode === true
+  const hasNewDamage = result && (result.newDamageCount > 0 || result.damages?.some((d: any) => d.is_new))
 
   return (
     <div>
@@ -314,6 +315,7 @@ function InspectContent() {
           ))}
         </div>
 
+        {/* ── Step 1 ── */}
         {step === 1 && (
           <div className="card" style={{ padding:'20px 16px' }}>
             <div style={{ fontSize:15, fontWeight:500, marginBottom:18 }}>Inspection setup</div>
@@ -352,6 +354,7 @@ function InspectContent() {
           </div>
         )}
 
+        {/* ── Step 2 ── */}
         {step === 2 && (
           <div className="card" style={{ padding:'20px 16px' }}>
             {showGuided ? (
@@ -512,98 +515,132 @@ function InspectContent() {
           </div>
         )}
 
+        {/* ── Step 3: Results ── */}
         {step === 3 && result && (
           <div>
             <div className="results-layout">
               <div className="results-main">
                 <div className="card" style={{ padding:'16px', marginBottom:12 }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                    <div style={{ fontSize:15, fontWeight:500 }}>Analysis complete</div>
-                    <div style={{ fontSize:20, fontWeight:700, color:condColor(result.overallCondition) }}>{result.overallCondition}</div>
-                  </div>
-                  <div style={{ fontSize:13, color:'#555', lineHeight:1.6, marginBottom:10 }}>{result.summary}</div>
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap', fontSize:12, color:'#888', marginBottom:12 }}>
-                    <span>Urgency: <strong style={{ color:'#1a1a1a' }}>{result.estimatedRepairUrgency}</strong></span>
-                    {result.followUpRequired && <span style={{ color:'#A32D2D', fontWeight:500 }}>⚠ Follow-up required</span>}
-                    {result.lowConfidenceFindings > 0 && <span style={{ color:'#633806', fontWeight:500 }}>⚠ {result.lowConfidenceFindings} finding{result.lowConfidenceFindings>1?'s':''} need verification</span>}
-                  </div>
-                  {!isDriver && result.totalEstimatedRepairCost && (result.totalEstimatedRepairCost.low>0||result.totalEstimatedRepairCost.high>0) && (
-                    <div style={{ background:'#FAEEDA', borderRadius:8, padding:'10px 14px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:4 }}>
-                      <div style={{ fontSize:12, fontWeight:500, color:'#633806' }}>Total estimated repairs</div>
-                      <div style={{ fontSize:16, fontWeight:700, color:'#854F0B' }}>${result.totalEstimatedRepairCost.low.toLocaleString()} – ${result.totalEstimatedRepairCost.high.toLocaleString()}</div>
-                    </div>
-                  )}
-                  {result.damages?.length > 0 ? (
+
+                  {/* ── No new damage (comparison mode) ── */}
+                  {isComparisonMode && !hasNewDamage ? (
                     <div>
-                      <div style={{ fontSize:11, fontWeight:500, color:'#888', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.05em' }}>Damage findings ({result.damages.length})</div>
-                      {result.damages.map((d: any, i: number) => (
-                        <div key={i} style={{ border:'0.5px solid rgba(0,0,0,0.08)', borderRadius:10, marginBottom:8, background:d.is_new?'#FCEBEB':'white', overflow:'hidden' }}>
-                          <div style={{ display:'flex', gap:10, padding:'12px' }}>
-                            <div style={{ width:8, height:8, borderRadius:'50%', background:sevDot(d.severity), marginTop:5, flexShrink:0 }} />
-                            <div style={{ flex:1, minWidth:0 }}>
-                              <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap:4, marginBottom:4 }}>
-                                <span style={{ fontSize:13, fontWeight:500 }}>{d.location}</span>
-                                {d.is_new && <span style={{ fontSize:10, background:'#FCEBEB', color:'#A32D2D', padding:'1px 6px', borderRadius:10 }}>NEW</span>}
-                                {d.diyReplaceable && <span style={{ fontSize:10, background:'#EAF3DE', color:'#27500A', padding:'1px 6px', borderRadius:10 }}>DIY</span>}
-                                {d.confidence!==undefined&&d.confidence<70 && <span style={{ fontSize:10, background:'#FAEEDA', color:'#633806', padding:'1px 6px', borderRadius:10 }}>⚠ Verify</span>}
+                      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'8px 0 16px' }}>
+                        <div style={{ width:40, height:40, borderRadius:'50%', background:'#EAF3DE', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>✓</div>
+                        <div>
+                          <div style={{ fontSize:16, fontWeight:600, color:'#27500A' }}>No new damage detected</div>
+                          <div style={{ fontSize:13, color:'#555', marginTop:2 }}>All findings match previously documented damage.</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize:12, color:'#888', borderTop:'0.5px solid rgba(0,0,0,0.07)', paddingTop:12 }}>
+                        Urgency: <strong style={{ color:'#1a1a1a' }}>Monitoring only</strong>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── Damage found ── */
+                    <div>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                        <div style={{ fontSize:15, fontWeight:500 }}>Analysis complete</div>
+                        <div style={{ fontSize:20, fontWeight:700, color:condColor(result.overallCondition) }}>{result.overallCondition}</div>
+                      </div>
+                      <div style={{ fontSize:13, color:'#555', lineHeight:1.6, marginBottom:10 }}>{result.summary}</div>
+                      <div style={{ display:'flex', gap:8, flexWrap:'wrap', fontSize:12, color:'#888', marginBottom:12 }}>
+                        <span>Urgency: <strong style={{ color:'#1a1a1a' }}>{result.estimatedRepairUrgency}</strong></span>
+                        {result.followUpRequired && <span style={{ color:'#A32D2D', fontWeight:500 }}>⚠ Follow-up required</span>}
+                        {result.lowConfidenceFindings > 0 && <span style={{ color:'#633806', fontWeight:500 }}>⚠ {result.lowConfidenceFindings} finding{result.lowConfidenceFindings>1?'s':''} need verification</span>}
+                      </div>
+
+                      {!isDriver && result.totalEstimatedRepairCost && (result.totalEstimatedRepairCost.low>0||result.totalEstimatedRepairCost.high>0) && (
+                        <div style={{ background:'#FAEEDA', borderRadius:8, padding:'10px 14px', marginBottom:12, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:4 }}>
+                          <div style={{ fontSize:12, fontWeight:500, color:'#633806' }}>Total estimated repairs</div>
+                          <div style={{ fontSize:16, fontWeight:700, color:'#854F0B' }}>${result.totalEstimatedRepairCost.low.toLocaleString()} – ${result.totalEstimatedRepairCost.high.toLocaleString()}</div>
+                        </div>
+                      )}
+
+                      {result.damages?.length > 0 ? (
+                        <div>
+                          <div style={{ fontSize:11, fontWeight:500, color:'#888', marginBottom:8, textTransform:'uppercase', letterSpacing:'0.05em' }}>
+                            {isComparisonMode ? `New damage (${result.damages.filter((d:any)=>d.is_new).length})` : `Damage findings (${result.damages.length})`}
+                          </div>
+                          {result.damages
+                            .filter((d: any) => !isComparisonMode || d.is_new)
+                            .map((d: any, i: number) => (
+                            <div key={i} style={{ border:'0.5px solid rgba(0,0,0,0.08)', borderRadius:10, marginBottom:8, background:'#FCEBEB', overflow:'hidden' }}>
+                              <div style={{ display:'flex', gap:10, padding:'12px' }}>
+                                <div style={{ width:8, height:8, borderRadius:'50%', background:sevDot(d.severity), marginTop:5, flexShrink:0 }} />
+                                <div style={{ flex:1, minWidth:0 }}>
+                                  <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap:4, marginBottom:4 }}>
+                                    <span style={{ fontSize:13, fontWeight:500 }}>{d.location}</span>
+                                    {d.diyReplaceable && <span style={{ fontSize:10, background:'#EAF3DE', color:'#27500A', padding:'1px 6px', borderRadius:10 }}>DIY</span>}
+                                    {d.confidence!==undefined&&d.confidence<70 && <span style={{ fontSize:10, background:'#FAEEDA', color:'#633806', padding:'1px 6px', borderRadius:10 }}>⚠ Verify</span>}
+                                  </div>
+                                  <div style={{ fontSize:13, color:'#555', lineHeight:1.5 }}>{d.description}</div>
+                                  {d.recommendation && <div style={{ fontSize:12, color:'#185FA5', marginTop:4 }}>→ {d.recommendation}</div>}
+                                  {d.repairEstimate&&(d.repairEstimate.low>0||d.repairEstimate.high>0) && (
+                                    <div style={{ fontSize:12, color:'#633806', marginTop:5, fontWeight:500 }}>
+                                      Est: ${d.repairEstimate.low.toLocaleString()} – ${d.repairEstimate.high.toLocaleString()}
+                                      {d.repairEstimate.method && <span style={{ fontWeight:400, color:'#888' }}> · {d.repairEstimate.method}</span>}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div style={{ fontSize:13, color:'#555', lineHeight:1.5 }}>{d.description}</div>
-                              {d.recommendation && <div style={{ fontSize:12, color:'#185FA5', marginTop:4 }}>→ {d.recommendation}</div>}
-                              {d.repairEstimate&&(d.repairEstimate.low>0||d.repairEstimate.high>0) && (
-                                <div style={{ fontSize:12, color:'#633806', marginTop:5, fontWeight:500 }}>
-                                  Est: ${d.repairEstimate.low.toLocaleString()} – ${d.repairEstimate.high.toLocaleString()}
-                                  {d.repairEstimate.method && <span style={{ fontWeight:400, color:'#888' }}> · {d.repairEstimate.method}</span>}
+                              {d.diyReplaceable&&d.partSearchQuery && (
+                                <div style={{ borderTop:'0.5px solid rgba(0,0,0,0.07)', padding:'8px 12px', background:'rgba(0,0,0,0.02)' }}>
+                                  <div className="part-links">
+                                    <span style={{ fontSize:11, color:'#888' }}>Find parts:</span>
+                                    {[
+                                      {name:'Amazon',url:`https://www.amazon.com/s?k=${encodeURIComponent(d.partSearchQuery)}&i=automotive`},
+                                      {name:'RockAuto',url:`https://www.rockauto.com/en/partsgroup/${encodeURIComponent(d.partSearchQuery.split(' ').slice(0,4).join('+')).toLowerCase()}`},
+                                      {name:'eBay Motors',url:`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(d.partSearchQuery)}&_sacat=6000`},
+                                      {name:'Fleet Parts Online',url:'https://www.fleetpartsonline.com'},
+                                      {name:'Morgan Olson Parts',url:'https://www.morganolsonparts.com'},
+                                      {name:'Morgan Parts',url:'https://www.morganparts.com'},
+                                    ].map(link => (
+                                      <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer"
+                                        style={{ fontSize:11, fontWeight:500, color:'#185FA5', background:'#E6F1FB', padding:'4px 10px', borderRadius:20, textDecoration:'none' }}>
+                                        {link.name} →
+                                      </a>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                             </div>
-                          </div>
-                          {d.diyReplaceable&&d.partSearchQuery && (
-                            <div style={{ borderTop:'0.5px solid rgba(0,0,0,0.07)', padding:'8px 12px', background:'rgba(0,0,0,0.02)' }}>
-                              <div className="part-links">
-                                <span style={{ fontSize:11, color:'#888' }}>Find parts:</span>
-                                {[
-                                  { name:'Amazon', url:`https://www.amazon.com/s?k=${encodeURIComponent(d.partSearchQuery)}&i=automotive` },
-                                  { name:'RockAuto', url:`https://www.rockauto.com/en/partsgroup/${encodeURIComponent(d.partSearchQuery.split(' ').slice(0,4).join('+')).toLowerCase()}` },
-                                  { name:'eBay Motors', url:`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(d.partSearchQuery)}&_sacat=6000` },
-                                  { name:'Fleet Parts Online', url:'https://www.fleetpartsonline.com' },
-                                  { name:'Morgan Olson Parts', url:'https://www.morganolsonparts.com' },
-                                  { name:'Morgan Parts', url:'https://www.morganparts.com' },
-                                ].map(link => (
-                                  <a key={link.name} href={link.url} target="_blank" rel="noopener noreferrer"
-                                    style={{ fontSize:11, fontWeight:500, color:'#185FA5', background:'#E6F1FB', padding:'4px 10px', borderRadius:20, textDecoration:'none' }}>
-                                    {link.name} →
-                                  </a>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                          ))}
                         </div>
-                      ))}
+                      ) : (
+                        <div style={{ padding:'16px', background:'#EAF3DE', borderRadius:8, fontSize:13, color:'#27500A' }}>No damage detected.</div>
+                      )}
+
+                      {!isDriver && (
+                        <div style={{ marginTop:14, background:'#f7f7f6', borderRadius:10, padding:'12px 14px' }}>
+                          <div style={{ fontSize:13, fontWeight:500, marginBottom:8, color:'#1a1a1a' }}>Did I miss anything?</div>
+                          <textarea value={missedDamage} onChange={e => setMissedDamage(e.target.value)}
+                            placeholder="Describe any damage not listed — location, what you see, severity..."
+                            rows={4} style={{ width:'100%', fontSize:13, border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:8, padding:'10px 12px', resize:'vertical', lineHeight:1.5, background:'white', color:'#1a1a1a', boxSizing:'border-box' }} />
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div style={{ padding:'16px', background:'#EAF3DE', borderRadius:8, fontSize:13, color:'#27500A' }}>No damage detected.</div>
                   )}
-                  {!isDriver && (
-                    <div style={{ marginTop:14, background:'#f7f7f6', borderRadius:10, padding:'12px 14px' }}>
-                      <div style={{ fontSize:13, fontWeight:500, marginBottom:8, color:'#1a1a1a' }}>Did I miss anything?</div>
-                      <textarea value={missedDamage} onChange={e => setMissedDamage(e.target.value)}
-                        placeholder="Describe any damage not listed — location, what you see, severity..."
-                        rows={4} style={{ width:'100%', fontSize:13, border:'0.5px solid rgba(0,0,0,0.15)', borderRadius:8, padding:'10px 12px', resize:'vertical', lineHeight:1.5, background:'white', color:'#1a1a1a', boxSizing:'border-box' }} />
-                    </div>
-                  )}
-                  {saved&&savedInspectionId && (
+
+                  {saved && savedInspectionId && (
                     <div style={{ marginTop:12 }}>
                       <DamageFeedback inspectionId={savedInspectionId} truckId={selectedTruck} onSubmitted={() => {}} />
                     </div>
                   )}
                 </div>
+
                 {saved && (
                   <div className="action-row" style={{ marginBottom:12 }}>
                     <Link href="/" className="btn">← Dashboard</Link>
-                    <button className="btn" onClick={() => { setStep(1);setResult(null);setFiles([]);setPreviews([]);setVideoFile(null);setVideoUrl('');setExtractedFrames([]);setSaved(false);setSavedInspectionId('');setMissedDamage('') }}>New inspection</button>
+                    <button className="btn" onClick={() => {
+                      setStep(1);setResult(null);setFiles([]);setPreviews([])
+                      setVideoFile(null);setVideoUrl('');setExtractedFrames([])
+                      setSaved(false);setSavedInspectionId('');setMissedDamage('')
+                    }}>New inspection</button>
                   </div>
                 )}
               </div>
+
               <div className="photo-strip-wrapper">
                 <PhotoStrip photos={sourceFrames.map((src,i) => ({ url:src, label:`Photo ${i+1}` }))} />
               </div>
@@ -615,7 +652,8 @@ function InspectContent() {
       {step===3&&result && (
         <div style={{ position:'fixed', bottom:0, left:0, right:0, background:'white', borderTop:'0.5px solid rgba(0,0,0,0.1)', padding:'10px 16px', zIndex:200 }}>
           {!saved ? (
-            <button onClick={saveInspection} disabled={saving} style={{ width:'100%', padding:'14px', background:saving?'#aaa':'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:16, fontWeight:600, cursor:saving?'default':'pointer' }}>
+            <button onClick={saveInspection} disabled={saving}
+              style={{ width:'100%', padding:'14px', background:saving?'#aaa':'#185FA5', color:'white', border:'none', borderRadius:10, fontSize:16, fontWeight:600, cursor:saving?'default':'pointer' }}>
               {saving?'Saving...':'Submit inspection'}
             </button>
           ) : (
