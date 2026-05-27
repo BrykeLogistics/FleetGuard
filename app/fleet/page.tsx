@@ -364,7 +364,7 @@ function FleetPage() {
     e.preventDefault(); setSaving(true)
     const payload = {...form, year:parseInt(form.year)||0}
     if (editingId) { await supabase.from('trucks').update(payload).eq('id',editingId); setEditingId(null) }
-    else { await supabase.from('trucks').insert({...payload,company_id:profile?.company_id}) }
+    else { await supabase.from('trucks').insert({...payload, company_id: profile?.company_id, user_id: profile?.id}) }
     setForm(emptyForm); setShowAdd(false); setSaving(false); loadTrucks()
   }
 
