@@ -3,14 +3,14 @@ import { useRef, useState, useEffect } from 'react'
 import { analyzePhotoQuality } from './PhotoQuality'
 
 const EXTERIOR_SHOTS = [
-  { id: 'front',        label: 'Front',                       icon: '⬆', desc: 'Stand 10–15 ft away, centered on the front grille' },
-  { id: 'front-left',   label: 'Driver side front corner',    icon: '↖', desc: 'Stand 10–15 ft away at a 45° angle from the driver side front corner' },
-  { id: 'driver',       label: 'Driver side',                 icon: '⬅', desc: 'Stand 10–15 ft away, walk along the full length of the driver side' },
-  { id: 'rear-left',    label: 'Driver side rear corner',     icon: '↙', desc: 'Stand 10–15 ft away at a 45° angle from the driver side rear corner' },
-  { id: 'rear',         label: 'Rear',                        icon: '⬇', desc: 'Stand 10–15 ft away, centered on the rear doors' },
-  { id: 'rear-right',   label: 'Passenger side rear corner',  icon: '↘', desc: 'Stand 10–15 ft away at a 45° angle from the passenger side rear corner' },
-  { id: 'passenger',    label: 'Passenger side',              icon: '➡', desc: 'Stand 10–15 ft away, walk along the full length of the passenger side' },
-  { id: 'front-right',  label: 'Passenger side front corner', icon: '↗', desc: 'Stand 10–15 ft away at a 45° angle from the passenger side front corner' },
+  { id: 'front',        label: 'Front',                       icon: '⬆', desc: 'Center on the front grille. Stand back as far as space allows — closer is fine, and it\'s OK if the truck slightly overflows the guide.' },
+  { id: 'front-left',   label: 'Driver side front corner',    icon: '↖', desc: 'Angle from the driver side front corner. Stand as close as space allows — the outline is a guide, not a box to fit inside.' },
+  { id: 'driver',       label: 'Driver side',                 icon: '⬅', desc: 'Capture the driver side. In tight spots stand closer and let the truck overflow the guide — just keep the lower body and panels in frame.' },
+  { id: 'rear-left',    label: 'Driver side rear corner',     icon: '↙', desc: 'Angle from the driver side rear corner. Closer is fine — keep the rear corner and lower body in view.' },
+  { id: 'rear',         label: 'Rear',                        icon: '⬇', desc: 'Center on the rear doors. Stand back as far as space allows; it\'s OK if the truck fills or slightly overflows the guide.' },
+  { id: 'rear-right',   label: 'Passenger side rear corner',  icon: '↘', desc: 'Angle from the passenger side rear corner. Closer is fine — keep the rear corner and lower body in view.' },
+  { id: 'passenger',    label: 'Passenger side',              icon: '➡', desc: 'Capture the passenger side. In tight spots stand closer and let the truck overflow the guide — just keep the lower body and panels in frame.' },
+  { id: 'front-right',  label: 'Passenger side front corner', icon: '↗', desc: 'Angle from the passenger side front corner. Stand as close as space allows — the outline is a guide, not a box to fit inside.' },
 ]
 
 const RENTAL_SHOTS = [
@@ -25,6 +25,20 @@ function getShots(isRental: boolean) {
 type StencilPath = { d: string; style?: any }
 type StencilDef = { viewBox: string; paths: StencilPath[] }
 type StencilSet = Record<string, StencilDef>
+
+// ── Stencil sizing ─────────────────────────────────────────────────
+// Enlarges the guide outline so inspectors can stand CLOSER and still fit the
+// truck inside it. A bigger on-screen outline means the truck is allowed to
+// look bigger in frame, which is what happens when you stand nearer. The
+// transform scales each stencil outward from the center of its own viewBox.
+// Bump STENCIL_SCALE up (e.g. 1.4) if inspectors still report backing up too
+// far; watch for the outline clipping at the frame edges past ~1.5.
+const STENCIL_SCALE = 1.3
+function stencilTransform(viewBox: string): string {
+  const [x, y, w, h] = viewBox.split(' ').map(Number)
+  const cx = x + w / 2, cy = y + h / 2
+  return `translate(${cx * (1 - STENCIL_SCALE)} ${cy * (1 - STENCIL_SCALE)}) scale(${STENCIL_SCALE})`
+}
 
 // ── SPRINTER VAN stencils ──────────────────────────────────────────
 const STENCILS_SPRINTER: StencilSet = {
@@ -177,8 +191,9 @@ const STENCILS_STEPVAN: StencilSet = {
     { d:'M 400 132 L 465 132 L 465 177 L 400 342 L 340 342 L 340 132 Z', style:{ fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.38)', strokeWidth:1.2, strokeDasharray:'5 4' } },
     { d:'M 155 132 L 340 132 L 340 342 L 155 342 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
     { d:'M 190 332 A 28 28 0 1 1 190 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M 400 332 A 28 28 0 1 1 400 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
-    { d:'M 385 137 L 398 137 L 398 180 L 385 180 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+    { d:'M 410 332 A 28 28 0 1 1 410 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
+    { d:'M 428 332 A 24 24 0 1 1 428 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.3)', strokeWidth:1, strokeDasharray:'4 3' } },
+    { d:'M 394 142 L 408 142 L 408 187 L 394 187 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
   'rear-right': { viewBox:'0 0 620 465', paths:[
     { d:'M 155 177 L 215 132 L 465 132 L 465 342 L 155 342 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.9)', strokeWidth:2.5, strokeDasharray:'10 6' } },
@@ -186,7 +201,7 @@ const STENCILS_STEPVAN: StencilSet = {
     { d:'M 280 132 L 465 132 L 465 342 L 280 342 Z', style:{ fill:'rgba(255,255,255,0.03)', stroke:'rgba(255,255,255,0.2)', strokeWidth:1, strokeDasharray:'6 5' } },
     { d:'M 220 332 A 28 28 0 1 1 220 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.6)', strokeWidth:2, strokeDasharray:'5 3' } },
     { d:'M 425 332 A 28 28 0 1 1 425 332 Z', style:{ fill:'none', stroke:'rgba(255,255,255,0.5)', strokeWidth:1.5, strokeDasharray:'5 3' } },
-    { d:'M 222 137 L 235 137 L 235 180 L 222 180 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
+    { d:'M 212 137 L 226 137 L 226 180 L 212 180 Z', style:{ fill:'rgba(255,255,255,0.06)', stroke:'rgba(255,255,255,0.45)', strokeWidth:1.2 } },
   ]},
 }
 
@@ -421,7 +436,7 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType, isRen
       <canvas ref={canvasRef} style={{ display:'none' }} />
 
       {cameraError && (
-        <div style={{ padding:24, textAlign:'center', background:'#1 a 1 a 1 a' }}>
+        <div style={{ padding:24, textAlign:'center', background:'#1a1a1a' }}>
           <div style={{ color:'#F09595', fontSize:14, marginBottom:16 }}>{cameraError}</div>
           <button onClick={requestCamera} style={{ padding:'10px 20px', background:'#185FA5', color:'white', border:'none', borderRadius:8, fontSize:13, cursor:'pointer' }}>Try again</button>
         </div>
@@ -433,10 +448,12 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType, isRen
 
           <svg width="100%" height="100%" viewBox={stencil.viewBox} preserveAspectRatio="xMidYMid meet"
             style={{ position:'absolute', inset:0, pointerEvents:'none' }}>
-            {stencil.paths.map((p, i) => <path key={i} d={p.d} style={p.style} />)}
+            <g transform={stencilTransform(stencil.viewBox)}>
+              {stencil.paths.map((p, i) => <path key={i} d={p.d} style={p.style} />)}
+            </g>
           </svg>
 
-          <div style={{ position:'absolute', inset:0, background:'radial-gradient (e l l ip s e a t c en t er, t r a n s p a ren t 40%, rgba(0,0,0,0.45) 100%)', pointerEvents:'none' }} />
+          <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.45) 100%)', pointerEvents:'none' }} />
 
           {!videoPlaying && (
             <div onClick={tapToStart} style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.7)', cursor:'pointer', zIndex:10 }}>
@@ -451,7 +468,7 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType, isRen
               {shot.icon} {shot.label}
             </div>
             <div style={{ background:'rgba(0,0,0,0.45)', color:'rgba(255,255,255,0.75)', padding:'3px 12px', borderRadius:16, fontSize:11 }}>
-              {currentShot + 1} of {SHOTS.length} · {vehicleLabel} · align to outline
+              {currentShot + 1} of {SHOTS.length} · {vehicleLabel} · closer is fine
             </div>
           </div>
 
@@ -474,6 +491,12 @@ export default function GuidedCapture({ onComplete, onCancel, vehicleType, isRen
               <div style={{ width:52, height:52, borderRadius:'50%', background:'white', border:'3px solid #185FA5' }} />
             </button>
             <button onClick={skipShot} style={{ padding:'9px 16px', background:'rgba(255,255,255,0.15)', color:'white', border:'none', borderRadius:10, fontSize:12, cursor:'pointer' }}>Skip</button>
+          </div>
+
+          <div style={{ position:'absolute', bottom:96, left:0, right:0, textAlign:'center', padding:'0 24px', pointerEvents:'none' }}>
+            <div style={{ display:'inline-block', background:'rgba(0,0,0,0.55)', color:'rgba(255,255,255,0.85)', fontSize:11, lineHeight:1.4, padding:'6px 14px', borderRadius:14, maxWidth:340 }}>
+              {shot.desc}
+            </div>
           </div>
         </div>
       )}
