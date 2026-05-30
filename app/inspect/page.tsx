@@ -24,6 +24,10 @@ function InspectContent() {
   const [uploadMode, setUploadMode] = useState<'photo'|'video'>('video')
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
+  // Index-aligned with `previews`. Holds the zone label for each photo:
+  // real zone names from guided capture ("Front", "Driver side"...),
+  // generic ordinals for camera-roll uploads ("Photo 1"...).
+  const [labels, setLabels] = useState<string[]>([])
   const [videoFile, setVideoFile] = useState<File|null>(null)
   const [videoUrl, setVideoUrl] = useState<string>('')
   const [extractedFrames, setExtractedFrames] = useState<string[]>([])
@@ -68,9 +72,19 @@ function InspectContent() {
   function handlePhotoFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const newFiles = Array.from(e.target.files || [])
     setFiles(prev => [...prev, ...newFiles])
+    // Camera-roll photos have no zone info — label them by their position in
+    // the growing list so the array stays aligned and the route gets *some*
+    // ordinal. We deliberately do NOT invent zone names here; a wrong label
+    // is worse than a generic one because it would misorient driver/passenger.
     newFiles.forEach(f => {
       const reader = new FileReader()
-      reader.onload = ev => setPreviews(prev => [...prev, ev.target?.result as string])
+      reader.onload = ev => {
+        setPreviews(prev => {
+          const next = [...prev, ev.target?.result as string]
+          setLabels(prevLabels => [...prevLabels, `Photo ${next.length}`])
+          return next
+        })
+      }
       reader.readAsDataURL(f)
     })
   }
@@ -78,6 +92,7 @@ function InspectContent() {
   function removePhoto(idx: number) {
     setFiles(prev => prev.filter((_, i) => i !== idx))
     setPreviews(prev => prev.filter((_, i) => i !== idx))
+    setLabels(prev => prev.filter((_, i) => i !== idx))
   }
 
   function handleVideoFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -105,10 +120,13 @@ function InspectContent() {
       await new Promise<void>(resolve => {
         video.currentTime = timestamps[i]
         video.onseeked = () => {
-          canvas.width = Math.min(video.videoWidth, 1280)
+          // Extract at a higher working resolution (was 1280). The single
+          // downsize to the analysis cap happens later in resizeImage — we
+          // avoid a second lossy pass by keeping this generous and at q0.92.
+          canvas.width = Math.min(video.videoWidth, 1600)
           canvas.height = Math.round(video.videoHeight * (canvas.width / video.videoWidth))
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-          frames.push(canvas.toDataURL('image/jpeg', 0.75))
+          frames.push(canvas.toDataURL('image/jpeg', 0.92))
           setExtractProgress(Math.round(((i + 1) / timestamps.length) * 100))
           resolve()
         }
@@ -148,7 +166,13 @@ function InspectContent() {
   function formatTime(s: number) { return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}` }
 
   function handleGuidedComplete(frames: { shotId: string, label: string, dataUrl: string }[]) {
-    setShowGuided(false); setPreviews(prev => [...prev, ...frames.map(f => f.dataUrl)]); setUploadMode('photo')
+    setShowGuided(false)
+    // Thread the guided zone labels through alongside the pixels, keeping
+    // both arrays index-aligned. This is the path that gives the model real
+    // orientation ("Front", "Driver side", "Rear"...).
+    setPreviews(prev => [...prev, ...frames.map(f => f.dataUrl)])
+    setLabels(prev => [...prev, ...frames.map(f => f.label || f.shotId || 'unlabeled')])
+    setUploadMode('photo')
   }
 
   const resizeImage = (dataUrl: string): Promise<string> =>
@@ -156,7 +180,11 @@ function InspectContent() {
       const img = new Image()
       img.onload = () => {
         const canvas = document.createElement('canvas')
-        const maxSize = 1000
+        // 1400px / q0.85: a real detail gain over the old 1000/0.75 while
+        // keeping an 8-photo base64 POST safely under Vercel's 4.5MB limit.
+        // When the Storage-URL migration lands, this cap comes off and the
+        // baseline pass can go to ~2400px for Opus.
+        const maxSize = 1400
         let w = img.width, h = img.height
         if (w > maxSize || h > maxSize) {
           if (w > h) { h = Math.round(h * maxSize / w); w = maxSize }
@@ -164,7 +192,7 @@ function InspectContent() {
         }
         canvas.width = w; canvas.height = h
         canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
-        resolve(canvas.toDataURL('image/jpeg', 0.75).split(',')[1])
+        resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1])
       }
       img.src = dataUrl
     })
@@ -182,7 +210,18 @@ function InspectContent() {
       baselineDamages = data || []
     }
     setAnalyzeStatus(`Preparing ${Math.min(sourceFrames.length, 8)} frames...`)
-    const images = await Promise.all(sourceFrames.slice(0, 8).map(async p => ({ media_type: 'image/jpeg', data: await resizeImage(p) })))
+    // Build the per-image label list aligned to whatever source we're sending.
+    // Photo mode uses the guided/ordinal labels; video frames are ordinal.
+    const sourceLabels = uploadMode === 'video'
+      ? sourceFrames.map((_, i) => `Frame ${i + 1}`)
+      : labels
+    const images = await Promise.all(
+      sourceFrames.slice(0, 8).map(async (p, i) => ({
+        media_type: 'image/jpeg',
+        data: await resizeImage(p),
+        label: sourceLabels[i] || `Photo ${i + 1}`,
+      }))
+    )
 
     const messages = ['Scanning front end and bumper...', 'Checking body panels and sides...', 'Inspecting roof and seams...', 'Reviewing rear and doors...', 'Analyzing damage severity...', 'Compiling findings...']
     let msgIdx = 0; setAnalyzeStatus(messages[0])
@@ -488,6 +527,7 @@ function InspectContent() {
                         {previews.map((src,i) => (
                           <div key={i} style={{ position:'relative' }}>
                             <img src={src} style={{ width:'100%', aspectRatio:'4/3', objectFit:'cover', borderRadius:8, border:'0.5px solid rgba(0,0,0,0.1)', display:'block' }} />
+                            {labels[i] && <div style={{ position:'absolute', bottom:3, left:3, background:'rgba(0,0,0,0.55)', color:'white', fontSize:9, padding:'1px 5px', borderRadius:3, maxWidth:'calc(100% - 10px)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{labels[i]}</div>}
                             <button className="thumb-remove" onClick={() => removePhoto(i)}>×</button>
                           </div>
                         ))}
@@ -633,7 +673,7 @@ function InspectContent() {
                   <div className="action-row" style={{ marginBottom:12 }}>
                     <Link href="/" className="btn">← Dashboard</Link>
                     <button className="btn" onClick={() => {
-                      setStep(1);setResult(null);setFiles([]);setPreviews([])
+                      setStep(1);setResult(null);setFiles([]);setPreviews([]);setLabels([])
                       setVideoFile(null);setVideoUrl('');setExtractedFrames([])
                       setSaved(false);setSavedInspectionId('');setMissedDamage('')
                     }}>New inspection</button>
@@ -642,7 +682,7 @@ function InspectContent() {
               </div>
 
               <div className="photo-strip-wrapper">
-                <PhotoStrip photos={sourceFrames.map((src,i) => ({ url:src, label:`Photo ${i+1}` }))} />
+                <PhotoStrip photos={sourceFrames.map((src,i) => ({ url:src, label:(uploadMode==='photo'&&labels[i])?labels[i]:`Photo ${i+1}` }))} />
               </div>
             </div>
           </div>
