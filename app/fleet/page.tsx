@@ -187,14 +187,11 @@ function InspectionPhotoGroups({ inspections, photos, photoUrls, onOpenLightbox 
   onOpenLightbox: (photos: {url:string,date:string}[], index: number) => void
 }) {
   const [expandedId, setExpandedId] = useState<string|null>(inspections[0]?.id || null)
-
-  // Group photos by inspection_id
   const photosByInspection: Record<string, any[]> = {}
   for (const p of photos) {
     if (!photosByInspection[p.inspection_id]) photosByInspection[p.inspection_id] = []
     photosByInspection[p.inspection_id].push(p)
   }
-
   return (
     <div className="card" style={{ padding:'16px', gridColumn:'1/-1' }}>
       <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Inspection photos</div>
@@ -203,11 +200,9 @@ function InspectionPhotoGroups({ inspections, photos, photoUrls, onOpenLightbox 
         const isExpanded = expandedId === insp.id
         const isFirst = inspIdx === 0
         const lbPhotos = inspPhotos.map(p => ({ url: photoUrls[p.id]||'', date: new Date(p.created_at).toLocaleDateString() })).filter(p=>p.url)
-
         return (
           <div key={insp.id} style={{ borderBottom:'0.5px solid rgba(0,0,0,0.07)', marginBottom:8, paddingBottom:8 }}>
-            <button
-              onClick={() => setExpandedId(isExpanded ? null : insp.id)}
+            <button onClick={() => setExpandedId(isExpanded ? null : insp.id)}
               style={{ width:'100%', background:'none', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 0', textAlign:'left' }}>
               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                 <span style={{ fontSize:13, fontWeight:isFirst?600:500, color:'#1a1a1a' }}>
@@ -221,10 +216,9 @@ function InspectionPhotoGroups({ inspections, photos, photoUrls, onOpenLightbox 
                 <span style={{ fontSize:14, color:'#888', transform:isExpanded?'rotate(90deg)':'none', transition:'transform 0.2s' }}>›</span>
               </div>
             </button>
-
             {isExpanded && inspPhotos.length > 0 && (
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))', gap:8, marginTop:8 }}>
-                {inspPhotos.map((p, i) => (
+                {inspPhotos.map((p) => (
                   <div key={p.id} style={{ cursor:photoUrls[p.id]?'pointer':'default' }}
                     onClick={() => photoUrls[p.id] && onOpenLightbox(lbPhotos, lbPhotos.findIndex(lp=>lp.url===photoUrls[p.id]))}>
                     {photoUrls[p.id]
@@ -308,8 +302,7 @@ function FleetPage() {
   function closeTruck() { setSelectedTruck(null); setTruckDetail({inspections:[],damages:[],photos:[]}); setPhotoUrls({}) }
 
   function openLightbox(photos: {url:string,date:string}[], index: number) {
-    setLightboxPhotos(photos)
-    setLightboxIndex(index)
+    setLightboxPhotos(photos); setLightboxIndex(index)
   }
 
   async function lookupVin() {
@@ -396,11 +389,18 @@ function FleetPage() {
   const cardProps = {editingId,showForm,onOpen:openTruck,onEdit:startEdit,onDelete:deleteTruck,onInspect:(id:string)=>router.push(`/inspect?truck=${id}`)}
   const formProps = {form,setForm,onSubmit:saveTruck,onCancel:cancelEdit,saving,editingId,vinLoading,vinMessage,csaList,onLookupVin:lookupVin,isOwner:isOwner||false}
 
-  // Most recent inspection photos for PhotoStrip
   const { inspections, damages, photos } = truckDetail
   const mostRecentInspId = inspections[0]?.id
   const mostRecentPhotos = photos.filter(p => p.inspection_id === mostRecentInspId)
   const stripPhotos = mostRecentPhotos.map((p,i) => ({ url:photoUrls[p.id]||'', label:`Photo ${i+1}`, date:new Date(p.created_at).toLocaleDateString() }))
+
+  // ── Reusable truck grid/list renderer ─────────────────────────
+  function TruckList({ list }: { list: any[] }) {
+    if (viewMode === 'grid') {
+      return <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:12 }}>{list.map(t=><TruckCard key={t.id} truck={t} {...cardProps}/>)}</div>
+    }
+    return <ListTable trucks={list} onOpen={openTruck} onEdit={startEdit}/>
+  }
 
   // ── Truck detail panel ─────────────────────────────────────────
   if (selectedTruck) {
@@ -460,24 +460,14 @@ function FleetPage() {
             </div>
           </div>
 
-          {/* Photo strip — most recent inspection only */}
           {!loadingDetail && stripPhotos.length > 0 && <PhotoStrip photos={stripPhotos} />}
           {loadingDetail&&<div style={{ textAlign:'center', padding:'40px', color:'#888', fontSize:13 }}>Loading...</div>}
 
           {!loadingDetail&&(
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-
-              {/* Grouped inspection photos */}
               {inspections.length > 0 && (
-                <InspectionPhotoGroups
-                  inspections={inspections}
-                  photos={photos}
-                  photoUrls={photoUrls}
-                  onOpenLightbox={openLightbox}
-                />
+                <InspectionPhotoGroups inspections={inspections} photos={photos} photoUrls={photoUrls} onOpenLightbox={openLightbox} />
               )}
-
-              {/* Inspection history */}
               <div className="card" style={{ padding:'16px' }}>
                 <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Inspection history ({inspections.length})</div>
                 {inspections.length===0
@@ -497,8 +487,6 @@ function FleetPage() {
                   ))
                 }
               </div>
-
-              {/* Damage log */}
               <div className="card" style={{ padding:'16px' }}>
                 <div style={{ fontSize:14, fontWeight:500, marginBottom:12 }}>Damage log ({damages.length})</div>
                 {damages.length===0
@@ -591,8 +579,7 @@ function FleetPage() {
                 {isOwner&&<button className="btn btn-primary" onClick={()=>setShowAdd(true)}>Add your first truck</button>}
               </div>
             )}
-            {viewMode==='grid'&&<div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:12 }}>{ownedTrucks.map(t=><TruckCard key={t.id} truck={t} {...cardProps}/>)}</div>}
-            {viewMode==='list'&&<ListTable trucks={ownedTrucks} onOpen={openTruck} onEdit={startEdit}/>}
+            <TruckList list={ownedTrucks} />
           </>
         )}
 
@@ -605,8 +592,7 @@ function FleetPage() {
                 {isOwner&&<button className="btn btn-primary" onClick={()=>{ setShowAdd(true); setForm({...emptyForm,fleet_type:'rental'}) }}>Add rental vehicle</button>}
               </div>
             )}
-            {viewMode==='grid'&&<div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:12 }}>{rentalTrucks.map(t=><TruckCard key={t.id} truck={t} {...cardProps}/>)}</div>}
-            {viewMode==='list'&&<ListTable trucks={rentalTrucks} onOpen={openTruck} onEdit={startEdit}/>}
+            <TruckList list={rentalTrucks} />
           </>
         )}
 
@@ -621,19 +607,19 @@ function FleetPage() {
                 {Object.entries(csaGroups).map(([csa,csaTrucks])=>(
                   <div key={csa} style={{ marginBottom:24 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'#185FA5', marginBottom:10 }}>📍 CSA {csa} <span style={{ fontSize:11, color:'#888', fontWeight:400 }}>· {csaTrucks.length} vehicle{csaTrucks.length!==1?'s':''}</span></div>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:10 }}>{csaTrucks.map((t:any)=><TruckCard key={t.id} truck={t} {...cardProps}/>)}</div>
+                    <TruckList list={csaTrucks} />
                   </div>
                 ))}
                 {noCsaTrucks.length>0&&(
                   <div style={{ marginBottom:24 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'#888', marginBottom:10 }}>No CSA assigned <span style={{ fontSize:11, fontWeight:400 }}>({noCsaTrucks.length})</span></div>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:10 }}>{noCsaTrucks.map(t=><TruckCard key={t.id} truck={t} {...cardProps}/>)}</div>
+                    <TruckList list={noCsaTrucks} />
                   </div>
                 )}
                 {csaList.length===0&&<div className="card" style={{ padding:'32px', textAlign:'center', color:'#888', fontSize:13 }}>No CSA locations set yet. Edit your trucks and add a CSA to organize by location.</div>}
               </div>
             ) : (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:12 }}>{filteredByCsa.map(t=><TruckCard key={t.id} truck={t} {...cardProps}/>)}</div>
+              <TruckList list={filteredByCsa} />
             )}
           </div>
         )}
