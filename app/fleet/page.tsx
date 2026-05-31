@@ -116,6 +116,12 @@ function ListTable({ trucks, onOpen, onEdit }: any) {
   )
 }
 
+// ── TruckList — grid or list based on viewMode prop ───────────────
+function TruckList({ list, viewMode, cardProps, onOpen, onEdit }: { list:any[], viewMode:string, cardProps:any, onOpen:(t:any)=>void, onEdit:(t:any)=>void }) {
+  if (viewMode === 'list') return <ListTable trucks={list} onOpen={onOpen} onEdit={onEdit} />
+  return <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:12 }}>{list.map(t=><TruckCard key={t.id} truck={t} {...cardProps}/>)}</div>
+}
+
 interface FormProps {
   form:typeof emptyForm; setForm:(f:typeof emptyForm)=>void
   onSubmit:(e:React.FormEvent)=>void; onCancel:()=>void
@@ -300,10 +306,7 @@ function FleetPage() {
   }
 
   function closeTruck() { setSelectedTruck(null); setTruckDetail({inspections:[],damages:[],photos:[]}); setPhotoUrls({}) }
-
-  function openLightbox(photos: {url:string,date:string}[], index: number) {
-    setLightboxPhotos(photos); setLightboxIndex(index)
-  }
+  function openLightbox(photos: {url:string,date:string}[], index: number) { setLightboxPhotos(photos); setLightboxIndex(index) }
 
   async function lookupVin() {
     const vin = form.vin
@@ -386,6 +389,7 @@ function FleetPage() {
   const csaGroups:Record<string,any[]> = csaList.reduce((acc:Record<string,any[]>,csa:string)=>{ acc[csa]=trucks.filter((t:any)=>t.csa===csa); return acc },{})
   const noCsaTrucks = trucks.filter(t=>!t.csa)
   const showForm = showAdd||editingId!==null
+
   const cardProps = {editingId,showForm,onOpen:openTruck,onEdit:startEdit,onDelete:deleteTruck,onInspect:(id:string)=>router.push(`/inspect?truck=${id}`)}
   const formProps = {form,setForm,onSubmit:saveTruck,onCancel:cancelEdit,saving,editingId,vinLoading,vinMessage,csaList,onLookupVin:lookupVin,isOwner:isOwner||false}
 
@@ -394,14 +398,6 @@ function FleetPage() {
   const mostRecentPhotos = photos.filter(p => p.inspection_id === mostRecentInspId)
   const stripPhotos = mostRecentPhotos.map((p,i) => ({ url:photoUrls[p.id]||'', label:`Photo ${i+1}`, date:new Date(p.created_at).toLocaleDateString() }))
 
-  // ── Reusable truck grid/list renderer ─────────────────────────
-  function TruckList({ list }: { list: any[] }) {
-    if (viewMode === 'grid') {
-      return <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))', gap:12 }}>{list.map(t=><TruckCard key={t.id} truck={t} {...cardProps}/>)}</div>
-    }
-    return <ListTable trucks={list} onOpen={openTruck} onEdit={startEdit}/>
-  }
-
   // ── Truck detail panel ─────────────────────────────────────────
   if (selectedTruck) {
     const newDamages = damages.filter(d=>d.is_new)
@@ -409,9 +405,7 @@ function FleetPage() {
       <div>
         <Navbar />
         {lightboxIndex !== null && (
-          <Lightbox
-            photos={lightboxPhotos}
-            index={lightboxIndex}
+          <Lightbox photos={lightboxPhotos} index={lightboxIndex}
             onClose={()=>setLightboxIndex(null)}
             onPrev={()=>setLightboxIndex(i=>i!==null&&i>0?i-1:i)}
             onNext={()=>setLightboxIndex(i=>i!==null&&i<lightboxPhotos.length-1?i+1:i)}
@@ -579,7 +573,7 @@ function FleetPage() {
                 {isOwner&&<button className="btn btn-primary" onClick={()=>setShowAdd(true)}>Add your first truck</button>}
               </div>
             )}
-            <TruckList list={ownedTrucks} />
+            <TruckList list={ownedTrucks} viewMode={viewMode} cardProps={cardProps} onOpen={openTruck} onEdit={startEdit} />
           </>
         )}
 
@@ -592,7 +586,7 @@ function FleetPage() {
                 {isOwner&&<button className="btn btn-primary" onClick={()=>{ setShowAdd(true); setForm({...emptyForm,fleet_type:'rental'}) }}>Add rental vehicle</button>}
               </div>
             )}
-            <TruckList list={rentalTrucks} />
+            <TruckList list={rentalTrucks} viewMode={viewMode} cardProps={cardProps} onOpen={openTruck} onEdit={startEdit} />
           </>
         )}
 
@@ -607,19 +601,19 @@ function FleetPage() {
                 {Object.entries(csaGroups).map(([csa,csaTrucks])=>(
                   <div key={csa} style={{ marginBottom:24 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'#185FA5', marginBottom:10 }}>📍 CSA {csa} <span style={{ fontSize:11, color:'#888', fontWeight:400 }}>· {csaTrucks.length} vehicle{csaTrucks.length!==1?'s':''}</span></div>
-                    <TruckList list={csaTrucks} />
+                    <TruckList list={csaTrucks} viewMode={viewMode} cardProps={cardProps} onOpen={openTruck} onEdit={startEdit} />
                   </div>
                 ))}
                 {noCsaTrucks.length>0&&(
                   <div style={{ marginBottom:24 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'#888', marginBottom:10 }}>No CSA assigned <span style={{ fontSize:11, fontWeight:400 }}>({noCsaTrucks.length})</span></div>
-                    <TruckList list={noCsaTrucks} />
+                    <TruckList list={noCsaTrucks} viewMode={viewMode} cardProps={cardProps} onOpen={openTruck} onEdit={startEdit} />
                   </div>
                 )}
                 {csaList.length===0&&<div className="card" style={{ padding:'32px', textAlign:'center', color:'#888', fontSize:13 }}>No CSA locations set yet. Edit your trucks and add a CSA to organize by location.</div>}
               </div>
             ) : (
-              <TruckList list={filteredByCsa} />
+              <TruckList list={filteredByCsa} viewMode={viewMode} cardProps={cardProps} onOpen={openTruck} onEdit={startEdit} />
             )}
           </div>
         )}
