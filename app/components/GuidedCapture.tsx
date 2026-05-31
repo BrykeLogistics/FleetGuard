@@ -33,7 +33,7 @@ type StencilSet = Record<string, StencilDef>
 // transform scales each stencil outward from the center of its own viewBox.
 // Bump STENCIL_SCALE up (e.g. 1.4) if inspectors still report backing up too
 // far; watch for the outline clipping at the frame edges past ~1.5.
-const STENCIL_SCALE = 1.6
+const STENCIL_SCALE = 1.9
 function stencilTransform(viewBox: string): string {
   const [x, y, w, h] = viewBox.split(' ').map(Number)
   const cx = x + w / 2, cy = y + h / 2
